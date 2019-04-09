@@ -1,0 +1,17 @@
+PROG = uspd
+OBJS = usp.o main.o
+
+PROG_CFLAGS = $(CFLAGS) -fstrict-aliasing -Wall -Wextra
+PROG_LDFLAGS = $(LDFLAGS)
+PROG_LDFLAGS += -luci -lubus -lubox -ljson-c -lblobmsg_json -ldatamodel
+
+%.o: %.c
+	$(CC) $(PROG_CFLAGS) $(FPIC) -c -o $@ $<
+
+all: uspd
+
+uspd: $(OBJS)
+	$(CC) $(PROG_LDFLAGS) -o $@ $^
+
+clean:
+	rm -f *.o $(PROG)

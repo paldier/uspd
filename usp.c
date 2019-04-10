@@ -43,9 +43,6 @@
 struct blob_buf bb;
 pathnode *head = NULL;
 pathnode *temphead = NULL;
-//struct dmubus_ctx dmubus_ctx;
-//struct ubus_context *ubus_ctx;
-//json_object *json_res = NULL;
 
 typedef void (*operation) (char *p);
 
@@ -362,22 +359,6 @@ static bool cwmp_get_value(char *path, bool fill) {
 	cwmp_cleanup(&dm_ctx);
 	return true;
 }
-void dereference_path(char *token) {
-	pathnode *p=head;
-
-	while(p!=NULL) {
-		char path[256]={'\0'};
-		char *node = NULL;
-		strcpy(path,p->ref_path);
-		strcat(path, token);
-		node = cwmp_get_value_by_id(path);
-		if(node) insert(node, false);
-
-		DEBUG("de-refrence |%s|, value|%s|", path, node);
-		p=p->next;
-	}
-	deleteList();
-}
 bool cwmp_get_name_exp(char *path, char *operator, char *operand) {
 	struct dmctx dm_ctx = {0};
 	struct dm_parameter *n;
@@ -413,39 +394,48 @@ bool cwmp_get_name_exp(char *path, char *operator, char *operand) {
 	return(ret);
 }
 
-// Optimize this function
-void solve(char *exp) {
-	DEBUG("Entry |%s|", exp);
+void dereference_path(char *ref, char *l_op, char *r_op, char *op) {
+	pathnode *p=head;
 
-	char *plus = strchr(exp, '+');
+	while(p!=NULL) {
+		char path[NAME_MAX]={'\0'};
+		char ref_path[NAME_MAX]={'\0'};
+		char *node = NULL;
+		strcpy(path,p->ref_path);
+		strcat(path, ref);
+		node = cwmp_get_value_by_id(path);
+		strcpy(ref_path, node);
+		strcat(ref_path, l_op);
+		DEBUG("de ref|%s|, path|%s|, node|%s|", ref_path, path, node);
 
-	if(plus != NULL ) {
-		char s[52] = {'\0'};
-		strncpy(s, exp, abs(plus-exp));
-		dereference_path(s);
-		exp = plus+1;
+		if(cwmp_get_name_exp(ref_path, op, r_op)) {
+			insert(strdup(p->ref_path), false);
+		}
+		p=p->next;
 	}
-	int len = strlen(exp);
-	char operator[3]={'\0'};
-	char token[52] = {'\0'};
-	char operand[52] = {'\0'};
+}
+void tokenize(char *exp, char *l_op, char *r_op, char *op)
+{
 	bool operator_found = false;
 	int index = 0, o_len=0;
+	int len = strlen(exp);
+	DEBUG("Entry exp|%s|", exp);
 	for(int i=0; i<len; ++i) {
 		switch(exp[i]) {
 			case '"':
 				{
 					++i;
-					while(exp[i]!='"') operand[index++] = exp[i++];
+					while(exp[i]!='"') r_op[index++] = exp[i++];
 					break;
 				}
 			case 'a' ... 'z':
 			case 'A' ... 'Z':
 			case '0' ... '9':
+			case '.':
 				if(operator_found) {
-					operand[index++]=exp[i];
+					r_op[index++]=exp[i];
 				} else {
-					token[index++]=exp[i];
+					l_op[index++]=exp[i];
 				}
 				break;
 			case '=':
@@ -454,23 +444,40 @@ void solve(char *exp) {
 			case '<':
 				operator_found = true;
 				index=0;
-				operator[o_len++] = exp[i];
+				op[o_len++] = exp[i];
 				break;
 			default:
 				ERR("Unknown symbol to parse [%c]", exp[i]);
 				return;
 		}
 	}
+}
+// Optimize this function
+void solve(char *exp) {
+	DEBUG("Entry |%s|", exp);
 
-	pathnode *p=head;
-	while(p!=NULL) {
-		char name[256]={'\0'};
-		strcpy(name, p->ref_path);
-		strcat(name, token);
-		if(cwmp_get_name_exp(name, operator, operand)){
-			insert(strdup(p->ref_path), false);
+	char operator[3]={'\0'};
+	char token[NAME_MAX] = {'\0'};
+	char operand[NAME_MAX] = {'\0'};
+	char *plus = strchr(exp, '+');
+
+	if(plus != NULL ) {
+		char s[NAME_MAX] = {'\0'};
+		strncpy(s, exp, plus-exp);
+		tokenize(plus+2, token, operand, operator);
+		dereference_path(s, token, operand, operator);
+	} else {
+		tokenize(exp, token, operand, operator);
+		pathnode *p=head;
+		while(p!=NULL) {
+			char name[NAME_MAX]={'\0'};
+			strcpy(name, p->ref_path);
+			strcat(name, token);
+			if(cwmp_get_name_exp(name, operator, operand)){
+				insert(strdup(p->ref_path), false);
+			}
+			p=p->next;
 		}
-		p=p->next;
 	}
 	deleteList();
 }
@@ -513,7 +520,7 @@ static int expand_expression(char *path, char *exp) {
 void filter_results(char *path, int start, int end) {
 	int startpos = start, m_index=0, m_len=0;
 	char *pp = path + startpos;
-	char exp[256]={'\0'};
+	char exp[NAME_MAX]={'\0'};
 	DEBUG("Entry path|%s| start|%d| end|%d| pp|%s|", path, start, end, pp);
 
 	if(start >= end) {
@@ -529,7 +536,7 @@ void filter_results(char *path, int start, int end) {
 
 		pathnode *p=head;
 		while(p!=NULL) {
-			char name[256]={'\0'};
+			char name[NAME_MAX]={'\0'};
 			strcpy(name, p->ref_path);
 			strcat(name, pp);
 			DEBUG("Final path[%s], ref |%s|", name, p->ref_path);
@@ -541,7 +548,7 @@ void filter_results(char *path, int start, int end) {
 	}
 
 	// Get the string before the match
-	char name[256]={'\0'};
+	char name[NAME_MAX]={'\0'};
 	strncpy(name, pp, m_index);
 	pathnode *p = head;
 
@@ -550,7 +557,7 @@ void filter_results(char *path, int start, int end) {
 	}
 
 	while(p!=NULL) {
-		char ref_name[256]={'\0'};
+		char ref_name[NAME_MAX]={'\0'};
 		sprintf(ref_name, "%s%s", p->ref_path, name);
 		insert(strdup(ref_name), false);
 		p = p->next;
@@ -581,7 +588,7 @@ static int get(struct ubus_context *ctx, struct ubus_object *obj,
 		struct blob_attr *msg)
 {
 	struct blob_attr *tb[__DM_MAX];
-	char path[256] = {'\0'};
+	char path[PATH_MAX] = {'\0'};
 	blobmsg_parse(dm_get_policy, __DM_MAX, tb, blob_data(msg), blob_len(msg));
 
 	if (!(tb[DMPATH_NAME]))
@@ -627,9 +634,9 @@ static int operate(struct ubus_context *ctx, struct ubus_object *obj,
 		struct blob_attr *msg)
 {
 	struct blob_attr *tb[__DM_MAX];
-	char path[256]={'\0'};
-	char rel_path[256]={'\0'};
-	char cmd[256]={'\0'};
+	char path[PATH_MAX]={'\0'};
+	char rel_path[PATH_MAX]={'\0'};
+	char cmd[NAME_MAX]={'\0'};
 	char *op_path = NULL;
 	DEBUG("Entry");
 	blobmsg_parse(dm_get_policy, __DM_MAX, tb, blob_data(msg), blob_len(msg));
@@ -651,7 +658,7 @@ static int operate(struct ubus_context *ctx, struct ubus_object *obj,
 
 	pathnode *p=head;
 	while(p!=NULL) {
-		char tmp[256] = {'\0'};
+		char tmp[NAME_MAX] = {'\0'};
 		sprintf(tmp, "%s%s", p->ref_path, cmd);
 		operate_on_node(tmp);
 		p=p->next;
@@ -680,8 +687,8 @@ void opr_in_progress(char *p) {
 
 void opr_network_reset(char *p) {
 	char *ret = strrchr(p, '.');
-	char name[256] = {'\0'};
-	char cmd[256] = "network.interface.";
+	char name[MAXNAMLEN] = {'\0'};
+	char cmd[NAME_MAX] = "network.interface.";
 
 	DEBUG("Entry path|%s|", p);
 
@@ -714,7 +721,7 @@ static int set_status(struct ubus_context *ctx, struct ubus_object *obj,
 		struct blob_attr *msg)
 {
 	struct blob_attr *tb[__DMSET_MAX];
-	char path[256]={'\0'}, value[48]={'\0'};
+	char path[PATH_MAX]={'\0'}, value[NAME_MAX]={'\0'};
 
 	blobmsg_buf_init(&bb);
 	blob_buf_init(&bb, 0);

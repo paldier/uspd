@@ -1,5 +1,5 @@
 PROG = uspd
-OBJS = usp.o main.o
+OBJS =common.o get.o set.o operate.o dummy.o usp.o
 
 PROG_CFLAGS = $(CFLAGS) -fstrict-aliasing -Wall -Wextra
 PROG_LDFLAGS = $(LDFLAGS)

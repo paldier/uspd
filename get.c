@@ -1,5 +1,5 @@
 /*
- * main.c: USP deamon
+ * get.c: Get handler for uspd
  *
  * Copyright (C) 2019 iopsys Software Solutions AB. All rights reserved.
  *
@@ -19,48 +19,33 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
  * 02110-1301 USA
  */
- 
-#include <stdio.h>
-#ifndef _GNU_SOURCE
-#define _GNU_SOURCE
-#endif
-#include <libubox/blobmsg.h>
-#include <libubox/uloop.h>
-#include <libubus.h>
 
-#include "usp.h"
+#include "common.h"
+#include "get.h"
+extern pathnode *head;
 
-static void usp_init(struct ubus_context *ctx)
-{
-	int ret;
-
-	ret = ubus_add_object(ctx, &usp_object);
-	if (ret)
-		ERR("Failed to add 'usp' ubus object: %s\n", ubus_strerror(ret));
-
-	uloop_run();
-}
-
-int main()
-{
-	const char *ubus_socket = NULL;
-	struct ubus_context *ctx = NULL;
-
-	openlog("uspd", LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL1);
-
-	uloop_init();
-	ctx = ubus_connect(ubus_socket);
-	if (!ctx) {
-		fprintf(stderr, "Failed to connect to ubus\n");
-		return -1;
+void create_response(struct blob_buf *bb) {
+	pathnode *p=head;
+	bool names_present = false;
+	printList(true);
+	DEBUG("Entry");
+	// First get the names
+	while(p!=NULL) {
+		if(false == cwmp_get_name(p->ref_path)) {
+			names_present = false;
+			break;
+		}
+		names_present = true;
+		p = p->next;
 	}
-	ubus_add_uloop(ctx);
-	usp_init(ctx);
+	if(names_present)
+		deleteList();
 
-	uloop_run();
-	ubus_free(ctx);
-	uloop_done();
-	closelog();
-
-	return 0;
+	p = head;
+	while(p!=NULL) {
+		cwmp_get_value(bb, p->ref_path, true);
+		p = p->next;
+	}
+	deleteList();
 }
+

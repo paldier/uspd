@@ -45,7 +45,6 @@ static int usp_get(struct ubus_context *ctx, struct ubus_object *obj,
 	DEBUG("Entry");
 	struct blob_attr *tb[__DM_MAX];
 	char path[PATH_MAX] = {'\0'};
-	struct blob_buf bb;
 
 	if(blobmsg_parse(dm_get_policy, __DM_MAX, tb, blob_data(msg), blob_len(msg))) {
 		ERR("Failed to parse blob");
@@ -55,6 +54,7 @@ static int usp_get(struct ubus_context *ctx, struct ubus_object *obj,
 	if (!(tb[DMPATH_NAME]))
 		return UBUS_STATUS_INVALID_ARGUMENT;
 
+	struct blob_buf bb;
 	blob_buf_init(&bb, 0);
 	blobmsg_buf_init(&bb);
 
@@ -62,7 +62,7 @@ static int usp_get(struct ubus_context *ctx, struct ubus_object *obj,
 	DEBUG("Path |%s|",path);
 
 	filter_results(path, 0, strlen(path));
-	create_response(&bb);
+	create_response(&bb, path);
 
 	ubus_send_reply(ctx, req, bb.head);
 	blob_buf_free(&bb);
@@ -81,25 +81,25 @@ int usp_set(struct ubus_context *ctx, struct ubus_object *obj,
 	DEBUG("Entry");
 	struct blob_attr *tb[__DMSET_MAX];
 	char path[PATH_MAX]={'\0'}, value[NAME_MAX]={'\0'};
-	struct blob_buf bb;
-
-	blobmsg_buf_init(&bb);
-	blob_buf_init(&bb, 0);
 
 	if(blobmsg_parse(dm_set_policy, __DMSET_MAX, tb, blob_data(msg), blob_len(msg))) {
 		ERR("Failed to parse blob");
 		return UBUS_STATUS_UNKNOWN_ERROR;
 	}
 
-	if (!(tb[DM_SET_PATH]))
+	if (!tb[DM_SET_PATH])
 		return UBUS_STATUS_INVALID_ARGUMENT;
 
 	if (!tb[DM_SET_VALUE])
 		return UBUS_STATUS_INVALID_ARGUMENT;
 
+	struct blob_buf bb;
+
+	blob_buf_init(&bb, 0);
+	blobmsg_buf_init(&bb);
+
 	strcpy(path, blobmsg_data(tb[DM_SET_PATH]));
 	strcpy(value, blobmsg_data(tb[DM_SET_VALUE]));
-	DEBUG("set path |%s| value |%s|",path, value);
 
 	filter_results(path, 0, strlen(path));
 	create_set_response(&bb, value);
@@ -112,6 +112,7 @@ int usp_set(struct ubus_context *ctx, struct ubus_object *obj,
 
 static const struct blobmsg_policy dm_operate_policy[__DM_OPERATE_MAX] = {
 	[DM_OPERATE_PATH] = { .name = "path", .type = BLOBMSG_TYPE_STRING },
+	[DM_OPERATE_ACTION] = { .name = "action", .type = BLOBMSG_TYPE_STRING },
 };
 
 int usp_operate(struct ubus_context *ctx, struct ubus_object *obj,
@@ -121,9 +122,7 @@ int usp_operate(struct ubus_context *ctx, struct ubus_object *obj,
 	struct blob_attr *tb[__DM_OPERATE_MAX];
 	struct blob_buf bb;
 	char path[PATH_MAX]={'\0'};
-	char rel_path[PATH_MAX]={'\0'};
 	char cmd[NAME_MAX]={'\0'};
-	char *op_path = NULL;
 	DEBUG("Entry");
 
 	if(blobmsg_parse(dm_operate_policy, __DM_OPERATE_MAX, tb, blob_data(msg), blob_len(msg))) {
@@ -134,17 +133,17 @@ int usp_operate(struct ubus_context *ctx, struct ubus_object *obj,
 	if (!(tb[DM_OPERATE_PATH]))
 		return UBUS_STATUS_INVALID_ARGUMENT;
 
+	if (!(tb[DM_OPERATE_ACTION]))
+		return UBUS_STATUS_INVALID_ARGUMENT;
+
 	blob_buf_init(&bb, 0);
 	blobmsg_buf_init(&bb);
 
 
 	strcpy(path, blobmsg_data(tb[DM_OPERATE_PATH]));
+	strcpy(cmd, blobmsg_data(tb[DM_OPERATE_ACTION]));
 
-	op_path = strrchr(path, '.');
-	strcpy(cmd, op_path+1);
-
-	strncpy(rel_path, path, op_path-path+1);
-	filter_results(rel_path, 0, strlen(rel_path));
+	filter_results(path, 0, strlen(path));
 
 	create_operate_response(&bb, cmd);
 

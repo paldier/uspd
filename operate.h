@@ -2,6 +2,7 @@
 #define OPERATE_H
 enum {
 	DM_OPERATE_PATH,
+	DM_OPERATE_ACTION,
 	__DM_OPERATE_MAX,
 };
 

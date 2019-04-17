@@ -24,28 +24,14 @@
 #include "get.h"
 extern pathnode *head;
 
-void create_response(struct blob_buf *bb) {
+void create_response(struct blob_buf *bb, char *qpath) {
 	pathnode *p=head;
-	bool names_present = false;
-	printList(true);
-	DEBUG("Entry");
-	// First get the names
-	while(p!=NULL) {
-		if(false == cwmp_get_name(p->ref_path)) {
-			names_present = false;
-			break;
-		}
-		names_present = true;
-		p = p->next;
-	}
-	if(names_present)
-		deleteList();
-
 	p = head;
 	while(p!=NULL) {
-		cwmp_get_value(bb, p->ref_path, true);
+		cwmp_get_value(p->ref_path, true, qpath);
 		p = p->next;
 	}
 	deleteList();
+	prepare_result(bb);
 }
 

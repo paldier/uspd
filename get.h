@@ -5,5 +5,5 @@ enum {
 	__DM_MAX,
 };
 
-void create_response(struct blob_buf *bb);
+void create_response(struct blob_buf *bb, char *qpath);
 #endif /* GET_H */

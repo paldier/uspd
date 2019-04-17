@@ -63,13 +63,13 @@ static void opr_network_reset(char *p) {
 }
 
 static struct op_cmd operate_helper[] = {
-	[0] = {"Device.Reboot()", opr_reboot_device},
-	[1] = {"Device.FactoryReset()", opr_factory_reset},
-	[2] = {"Device.IP.Interface.*.Reset()", opr_network_reset}
+	[0] = {"Device.Reboot", opr_reboot_device},
+	[1] = {"Device.FactoryReset", opr_factory_reset},
+	[2] = {"Device.IP.Interface.*.Reset", opr_network_reset}
 };
 
 static void operate_on_node(struct blob_buf *bb, char *path) {
-	DEBUG("Entry");
+	DEBUG("Entry path|%s|", path);
 	int i=0, len=0;
 	bool found = false;
 	len = ARRAY_SIZE(operate_helper);

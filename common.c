@@ -23,10 +23,66 @@
 #include "common.h"
 
 #define GLOB_CHAR "[[+*#]+"
+#define DELIM '.'
+#define RESULT_STACK 15
 
+static bool is_node_instance(char *path);
+static bool is_leaf(char *path, char *);
+static void process_result(struct blob_buf *bb, int len);
 // Global variables
+typedef struct resultnode {
+	char *name;
+	char *value;
+	char *type;
+	struct resultnode *next;
+} resultnode;
+
+typedef struct resultstack {
+	void *cookie;
+	char *key;
+} resultstack;
+
+int rtop=-1;
+
+resultstack g_result[RESULT_STACK];
+resultnode *rnode = NULL;
 pathnode *head = NULL;
 pathnode *temphead = NULL;
+
+// Stack utils
+bool is_stack_empty() {
+	return (rtop == -1);
+}
+
+bool push() {
+	DEBUG("entry");
+	if(rtop >= RESULT_STACK) {
+		ERR("Stack full, change stack logic");
+		return false;
+	}
+	rtop ++;
+	return true;
+}
+
+bool pop() {
+	DEBUG("entry");
+	if(is_stack_empty()) {
+		INFO("Stack empty, can't pop");
+		return false;
+	}
+	free(g_result[rtop].key);
+	memset(&g_result[rtop], '\0', sizeof(resultstack));
+	rtop--;
+	return true;
+}
+
+bool top() {
+	if(is_stack_empty()) {
+		INFO("Stack empty, no top");
+		return false;
+	}
+	return true;
+}
 
 // Common utilities
 bool is_str_eq(char *s1, char *s2) {
@@ -34,6 +90,13 @@ bool is_str_eq(char *s1, char *s2) {
 		return true;
 
 	return false;
+}
+
+static bool is_node_instance(char *path) {
+	int ins = -1;
+
+	ins = atoi(path);
+	return(ins != 0);
 }
 
 // RE utilities
@@ -77,7 +140,7 @@ static bool is_res_required(char *str, int *start, int *len) {
 
 		return true;
 	}
-
+	*start = strlen(str);
 	return false;
 }
 
@@ -120,6 +183,62 @@ static void swap_heads() {
 	pathnode *temp = head;
 	head = temphead;
 	temphead = temp;
+}
+
+
+// Insert link at the first location
+static void insert_result(char *name, char *value, char *type) {
+	DEBUG("Entry result |%s| value|%d|", name, value);
+	//create a link
+	resultnode *link = (resultnode*) calloc(1, sizeof(resultnode));
+	if(!link) {
+		ERR("Malloc failed!");
+		return;
+	}
+
+	link->name = strdup(name);
+	link->value = strdup(value);
+	link->type = strdup(type);
+
+	link->next = rnode;
+	rnode = link;
+}
+
+static void delete_result() {
+	resultnode *ptr = rnode, *temp;
+	DEBUG("Entry");
+	if ( ptr == NULL) {
+		INFO("Result List is empty");
+	}
+	//start from the beginning
+	while(ptr != NULL) {
+		temp = ptr;
+		free(ptr->name);
+		free(ptr->value);
+		free(ptr->type);
+
+		if(ptr->next != NULL) {
+			ptr = ptr->next;
+		} else {
+			ptr = NULL;
+		}
+		free(temp);
+	}
+	rnode = NULL;
+}
+
+static void rev_result() {
+	resultnode *tmp = rnode;
+	rnode = NULL;
+	while(tmp != NULL) {
+		resultnode *t = tmp;
+		insert_result(tmp->name, tmp->value, tmp->type);
+		free(tmp->name);
+		free(tmp->value);
+		free(tmp->type);
+		tmp = tmp->next;
+		free(t);
+	}
 }
 
 // Insert link at the first location
@@ -227,26 +346,195 @@ char *cwmp_get_value_by_id(char *id) {
 	return (value);
 }
 
-bool cwmp_get_value(struct blob_buf *bb, char *path, bool fill) {
+// path = 1.Stats.BytesReceived
+static bool leaf_same_group(char *path) {
+	DEBUG("entry");
+	char *key;
+
+	if(top()) {
+		key = g_result[rtop].key;
+		if(0 == strncmp(path, key, strlen(key))) {
+			DEBUG("same group stack|%s| path|%s|", g_result[rtop].key, path);
+			return true;
+		}
+	}
+	return false;
+}
+
+static bool is_leaf(char *path, char *node) {
+	DEBUG("entry path|%s|", path);
+	char *ret = NULL;
+	ret =  strchr(path, DELIM);
+
+	if(ret != NULL) {
+		strncpy(node, path, strlen(path) - strlen(ret));
+	}
+
+	return (ret==NULL);
+}
+
+static void process_result(struct blob_buf *bb, int len) {
+	char pn[NAME_MAX]={'\0'};
+	if(rnode == NULL) {
+		return;
+	}
+
+	DEBUG("Entry node |%s|, len|%d|", rnode->name, len);
+
+	if(leaf_same_group(rnode->name)) {
+		if(is_leaf(rnode->name+len, pn)) {
+			DEBUG("add leaf |%s|", rnode->name+len);
+			add_data_blob(bb, rnode->name+len, rnode->value, rnode->type);
+		} else {
+			//check after stack top it's a leaf
+			if(top()) {
+				if(is_str_eq(g_result[rtop].key, pn)) {
+					len = strlen(g_result[rtop].key) + 1;
+				} else {
+					push();
+					char temp[NAME_MAX] = {'\0'};
+					strncpy(temp, rnode->name, len);
+					strcat(temp, pn);
+					//INFO("Push1 |%s|, node|%s|", temp, pn);
+					len = strlen(temp) + 1;
+					if(is_node_instance(rnode->name + len)) {
+						//INFO("Open table |%s|", pn);
+						g_result[rtop].cookie = blobmsg_open_array(bb, pn);
+						g_result[rtop].key = strdup(temp);
+					} else {
+						if(is_node_instance(pn)) {
+							g_result[rtop].cookie = blobmsg_open_table(bb, NULL);
+						} else {
+							g_result[rtop].cookie = blobmsg_open_table(bb, pn);
+						}
+						g_result[rtop].key = strdup(temp);
+					}
+				}
+
+			} else {
+				push();
+				char temp[NAME_MAX] = {'\0'};
+				strncpy(temp, rnode->name, len);
+				strcat(temp, pn);
+				//INFO("Push2 |%s|, node|%s|", temp, pn);
+				len = strlen(temp) + 1;
+				if(is_node_instance(rnode->name + len)) {
+					//INFO("Open table |%s|", pn);
+					g_result[rtop].cookie = blobmsg_open_array(bb, pn);
+					g_result[rtop].key = strdup(temp);
+				} else {
+					if(is_node_instance(pn)) {
+						g_result[rtop].cookie = blobmsg_open_table(bb, NULL);
+					} else {
+						g_result[rtop].cookie = blobmsg_open_table(bb, pn);
+					}
+					g_result[rtop].key = strdup(temp);
+				}
+			}
+			process_result(bb, len);
+		}
+	} else {
+		// check if it still belong to the group on stack
+		if(top()) { // if element present in stack but not matching
+			blobmsg_close_table(bb,g_result[rtop].cookie);
+		}
+		if(is_leaf(rnode->name, pn)) {
+			//INFO("add in blob|%s|, value|%s|, type|%s|", rnode->name, rnode->value, rnode->type);
+			add_data_blob(bb, rnode->name, rnode->value, rnode->type);
+		} else {
+			if(top()) { // if element present in stack but not matching
+				pop();
+				if(top())
+					len = strlen(g_result[rtop].key) + 1;
+			} else {
+				if(push() == false)
+					return;
+				//INFO("Pushing |%s|", pn);
+				len = strlen(pn) + 1;
+				if(is_node_instance(rnode->name + len)) {
+					//INFO("Open table |%s|", pn);
+					g_result[rtop].cookie = blobmsg_open_array(bb, pn);
+					g_result[rtop].key = strdup(pn);
+				} else {
+					if(is_node_instance(pn)) {
+						g_result[rtop].cookie = blobmsg_open_table(bb, NULL);
+					} else {
+						g_result[rtop].cookie = blobmsg_open_table(bb, pn);
+					}
+					g_result[rtop].key = strdup(pn);
+				}
+			}
+			process_result(bb, len);
+		}
+	}
+	if(rnode != NULL)
+		rnode = rnode->next;
+
+	process_result(bb, len);
+	//process_result(bb, rhead, len);
+}
+
+
+static int get_glob_len(char *path) {
+	int m_index = 0, m_len=0, ret=0;
+	int plen = strlen(path);
+	DEBUG("Entry");
+	if(is_res_required(path, &m_index, &m_len)) {
+		char temp_name[NAME_MAX] = {'\0'};
+		strncpy(temp_name, path, m_index - 1 );
+		char *end = strrchr(temp_name, DELIM);
+		ret = m_index - strlen(end);
+	} else {
+		char name[NAME_MAX] = {'\0'};
+		if(path[plen - 1] == DELIM) {
+			strncpy(name, path, plen -1 );
+		} else {
+			ret = 1;
+			strncpy(name, path, plen );
+		}
+		char *end = strrchr(name, DELIM);
+		ret = ret + strlen(path) - strlen(end);
+		if(is_node_instance(end+1)) {
+			char temp_name[NAME_MAX] = {'\0'};
+			strncpy(temp_name, path, plen - strlen(end) - 1 );
+			end = strrchr(temp_name, DELIM);
+			ret = ret - strlen(end);
+		}
+	}
+	return(ret);
+}
+
+bool cwmp_get_value(char *path, bool fill, char *query_path) {
 	struct dmctx dm_ctx = {0};
 	struct dm_parameter *n;
+	int plen = get_glob_len(query_path);
 
-	DEBUG("Entry path |%s|, fill|%d|", path, fill);
+	DEBUG("Entry path |%s|, fill|%d|, query_path|%s|", path, fill, query_path);
+
 	cwmp_init(&dm_ctx);
 	if(cwmp_get(CMD_GET_VALUE, path, &dm_ctx)) {
 		if(fill) {
-			void *bb_array = blobmsg_open_table(bb, NULL);
-			add_data_blob(bb, "path", path, "xsd:string");
 			list_for_each_entry(n, &dm_ctx.list_parameter, list) {
-				int len = strlen(path);
-				DEBUG("create path|%s|, node|%s|, len|%d|, ",path, n->name, len);
-				add_data_blob(bb, n->name+len, n->data, n->type);
+				DEBUG("insert node|%s|, value|%s| ", n->name+plen, n->data);
+				insert_result(n->name+plen, n->data, n->type);
 			}
-			blobmsg_close_table(bb, bb_array);
 		}
 	}
 	cwmp_cleanup(&dm_ctx);
 	return true;
+}
+
+void prepare_result(struct blob_buf *bb) {
+	rev_result();
+	resultnode *rhead = rnode;
+	process_result(bb, 0);
+	while(top()){
+		DEBUG("Close all open tables");
+		blobmsg_close_table(bb,g_result[rtop].cookie);
+		pop();
+	}
+	rnode = rhead;
+	delete_result();
 }
 
 static bool cwmp_get_name_exp(char *path, char *operator, char *operand) {
@@ -279,7 +567,6 @@ static bool cwmp_get_name_exp(char *path, char *operator, char *operand) {
 			}
 		}
 	}
-
 	cwmp_cleanup(&dm_ctx);
 	return(ret);
 }
@@ -331,6 +618,7 @@ static void dereference_path(char *ref, char *l_op, char *r_op, char *op) {
 		strcpy(ref_path, node);
 		strcat(ref_path, l_op);
 		DEBUG("de ref|%s|, path|%s|, node|%s|", ref_path, path, node);
+		free(node);
 
 		if(cwmp_get_name_exp(ref_path, op, r_op)) {
 			insert(strdup(p->ref_path), false);
@@ -377,7 +665,6 @@ static void tokenize(char *exp, char *l_op, char *r_op, char *op) {
 	}
 }
 
-// Optimize this function
 static void solve(char *exp) {
 	DEBUG("Entry |%s|", exp);
 
@@ -441,8 +728,6 @@ static int expand_expression(char *path, char *exp) {
 	return(shiftpos);
 }
 
-// return index and 
-// int 
 void filter_results(char *path, int start, int end) {
 	int startpos = start, m_index=0, m_len=0;
 	char *pp = path + startpos;

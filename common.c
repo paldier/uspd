@@ -28,7 +28,7 @@
 
 static bool is_node_instance(char *path);
 static bool is_leaf(char *path, char *);
-static void process_result(struct blob_buf *bb, int len);
+static void process_result(struct blob_buf *bb, unsigned int len);
 // Global variables
 typedef struct resultnode {
 	char *name;
@@ -42,12 +42,12 @@ typedef struct resultstack {
 	char *key;
 } resultstack;
 
-int rtop=-1;
+static int rtop=-1;
 
-resultstack g_result[RESULT_STACK];
-resultnode *rnode = NULL;
+static resultstack g_result[RESULT_STACK];
+static resultnode *rnode = NULL;
 pathnode *head = NULL;
-pathnode *temphead = NULL;
+static pathnode *temphead = NULL;
 
 // Stack utils
 bool is_stack_empty() {
@@ -353,8 +353,10 @@ static bool leaf_same_group(char *path) {
 
 	if(top()) {
 		key = g_result[rtop].key;
-		if(0 == strncmp(path, key, strlen(key))) {
-			DEBUG("same group stack|%s| path|%s|", g_result[rtop].key, path);
+		unsigned int klen = strlen(key);
+
+		if(0 == strncmp(path, key, klen)) {
+			DEBUG("same group|%s| path|%s|", g_result[rtop].key, path);
 			return true;
 		}
 	}
@@ -367,14 +369,15 @@ static bool is_leaf(char *path, char *node) {
 	ret =  strchr(path, DELIM);
 
 	if(ret != NULL) {
-		strncpy(node, path, strlen(path) - strlen(ret));
+		strncpy(node, path, strlen(path) - strlen(ret)+1);
 	}
 
 	return (ret==NULL);
 }
 
-static void process_result(struct blob_buf *bb, int len) {
+static void process_result(struct blob_buf *bb, unsigned int len) {
 	char pn[NAME_MAX]={'\0'};
+
 	if(rnode == NULL) {
 		return;
 	}
@@ -383,29 +386,33 @@ static void process_result(struct blob_buf *bb, int len) {
 
 	if(leaf_same_group(rnode->name)) {
 		if(is_leaf(rnode->name+len, pn)) {
-			DEBUG("add leaf |%s|", rnode->name+len);
+			//INFO("add leaf |%s|", rnode->name+len);
 			add_data_blob(bb, rnode->name+len, rnode->value, rnode->type);
 		} else {
 			//check after stack top it's a leaf
 			if(top()) {
 				if(is_str_eq(g_result[rtop].key, pn)) {
-					len = strlen(g_result[rtop].key) + 1;
+					len = strlen(g_result[rtop].key);
 				} else {
 					push();
 					char temp[NAME_MAX] = {'\0'};
 					strncpy(temp, rnode->name, len);
 					strcat(temp, pn);
 					//INFO("Push1 |%s|, node|%s|", temp, pn);
-					len = strlen(temp) + 1;
+					len = strlen(temp);
+
+					char table_name[NAME_MAX]={'\0'};
+					strncpy(table_name, pn, strlen(pn)-1);
+
 					if(is_node_instance(rnode->name + len)) {
-						//INFO("Open table |%s|", pn);
-						g_result[rtop].cookie = blobmsg_open_array(bb, pn);
+						//INFO("Open table |%s|", table_name);
+						g_result[rtop].cookie = blobmsg_open_array(bb, table_name);
 						g_result[rtop].key = strdup(temp);
 					} else {
 						if(is_node_instance(pn)) {
 							g_result[rtop].cookie = blobmsg_open_table(bb, NULL);
 						} else {
-							g_result[rtop].cookie = blobmsg_open_table(bb, pn);
+							g_result[rtop].cookie = blobmsg_open_table(bb, table_name);
 						}
 						g_result[rtop].key = strdup(temp);
 					}
@@ -417,16 +424,20 @@ static void process_result(struct blob_buf *bb, int len) {
 				strncpy(temp, rnode->name, len);
 				strcat(temp, pn);
 				//INFO("Push2 |%s|, node|%s|", temp, pn);
-				len = strlen(temp) + 1;
+				len = strlen(temp);
+
+				char table_name[NAME_MAX]={'\0'};
+				strncpy(table_name, pn, strlen(pn)-1);
+
 				if(is_node_instance(rnode->name + len)) {
-					//INFO("Open table |%s|", pn);
-					g_result[rtop].cookie = blobmsg_open_array(bb, pn);
+					//INFO("Open table |%s|", table_name);
+					g_result[rtop].cookie = blobmsg_open_array(bb, table_name);
 					g_result[rtop].key = strdup(temp);
 				} else {
 					if(is_node_instance(pn)) {
 						g_result[rtop].cookie = blobmsg_open_table(bb, NULL);
 					} else {
-						g_result[rtop].cookie = blobmsg_open_table(bb, pn);
+						g_result[rtop].cookie = blobmsg_open_table(bb, table_name);
 					}
 					g_result[rtop].key = strdup(temp);
 				}
@@ -436,6 +447,7 @@ static void process_result(struct blob_buf *bb, int len) {
 	} else {
 		// check if it still belong to the group on stack
 		if(top()) { // if element present in stack but not matching
+			//INFO("Closing table for |%s|", g_result[rtop].key);
 			blobmsg_close_table(bb,g_result[rtop].cookie);
 		}
 		if(is_leaf(rnode->name, pn)) {
@@ -445,21 +457,25 @@ static void process_result(struct blob_buf *bb, int len) {
 			if(top()) { // if element present in stack but not matching
 				pop();
 				if(top())
-					len = strlen(g_result[rtop].key) + 1;
+					len = strlen(g_result[rtop].key);
 			} else {
 				if(push() == false)
 					return;
 				//INFO("Pushing |%s|", pn);
-				len = strlen(pn) + 1;
+				len = strlen(pn);
+
+				char table_name[NAME_MAX]={'\0'};
+				strncpy(table_name, pn, len-1);
+
 				if(is_node_instance(rnode->name + len)) {
-					//INFO("Open table |%s|", pn);
-					g_result[rtop].cookie = blobmsg_open_array(bb, pn);
+					//INFO("Open table |%s|", table_name);
+					g_result[rtop].cookie = blobmsg_open_array(bb, table_name);
 					g_result[rtop].key = strdup(pn);
 				} else {
 					if(is_node_instance(pn)) {
 						g_result[rtop].cookie = blobmsg_open_table(bb, NULL);
 					} else {
-						g_result[rtop].cookie = blobmsg_open_table(bb, pn);
+						g_result[rtop].cookie = blobmsg_open_table(bb, table_name);
 					}
 					g_result[rtop].key = strdup(pn);
 				}
@@ -471,7 +487,6 @@ static void process_result(struct blob_buf *bb, int len) {
 		rnode = rnode->next;
 
 	process_result(bb, len);
-	//process_result(bb, rhead, len);
 }
 
 

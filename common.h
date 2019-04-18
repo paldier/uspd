@@ -36,7 +36,7 @@ bool is_str_eq(char *s1, char *s2);
 bool match(const char *string, const char *pattern);
 void prepare_result(struct blob_buf *bb);
 
-#define DEBUG_ENABLED 1
+#define DEBUG_ENABLED 0
 #define DEBUG(fmt, args...) \
 do { \
 	if (DEBUG_ENABLED) \

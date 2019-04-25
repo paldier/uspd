@@ -593,7 +593,7 @@ bool cwmp_set_value(struct blob_buf *bb, char *path, char *value) {
 	void *bb_array = blobmsg_open_table(bb, NULL);
 
 	cwmp_init(&dm_ctx);
-	DEBUG("Entry |%s|", path);
+	DEBUG("Entry path|%s|, value|%s|", path, value);
 	fault = dm_entry_param_method(&dm_ctx, CMD_SET_VALUE, path, value, NULL);
 
 	if(!fault) {
@@ -728,12 +728,11 @@ static int expand_expression(char *path, char *exp) {
 			// Get multiple tokens and then evaluate
 			shiftpos = strlen(exp) + 2;
 			char *token;
-			token = strtok(exp+1,"&&");
+			char *rest = exp+1;
 			/* walk through other tokens */
-			while( token != NULL ) {
+			while ((token = strtok_r(rest, "&&", &rest))) {
 				DEBUG("solve %s", token );
 				solve(token);
-				token = strtok(NULL, "&&");
 			}
 			break;
 		default:

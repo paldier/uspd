@@ -35,7 +35,7 @@
 
 
 static const struct blobmsg_policy dm_get_policy[__DM_MAX] = {
-	[DMPATH_NAME] = { .name = "path", .type = BLOBMSG_TYPE_STRING },
+	[DMPATH_NAME] = { .name = "path", .type = BLOBMSG_TYPE_STRING }
 };
 
 static int usp_get(struct ubus_context *ctx, struct ubus_object *obj,
@@ -55,8 +55,8 @@ static int usp_get(struct ubus_context *ctx, struct ubus_object *obj,
 		return UBUS_STATUS_INVALID_ARGUMENT;
 
 	struct blob_buf bb;
+	memset(&bb,0,sizeof(struct blob_buf));
 	blob_buf_init(&bb, 0);
-	blobmsg_buf_init(&bb);
 
 	strcpy(path, blobmsg_data(tb[DMPATH_NAME]));
 	DEBUG("Path |%s|",path);
@@ -73,6 +73,7 @@ static int usp_get(struct ubus_context *ctx, struct ubus_object *obj,
 const struct blobmsg_policy dm_set_policy[__DMSET_MAX] = {
 	[DM_SET_PATH] = { .name = "path", .type = BLOBMSG_TYPE_STRING },
 	[DM_SET_VALUE] = { .name = "value", .type = BLOBMSG_TYPE_STRING },
+	[DM_SET_VALUE_TABLE] = { .name = "values", .type = BLOBMSG_TYPE_TABLE }
 };
 int usp_set(struct ubus_context *ctx, struct ubus_object *obj,
 		struct ubus_request_data *req, const char *method,
@@ -90,19 +91,26 @@ int usp_set(struct ubus_context *ctx, struct ubus_object *obj,
 	if (!tb[DM_SET_PATH])
 		return UBUS_STATUS_INVALID_ARGUMENT;
 
-	if (!tb[DM_SET_VALUE])
+	if (!tb[DM_SET_VALUE] && !tb[DM_SET_VALUE_TABLE])
 		return UBUS_STATUS_INVALID_ARGUMENT;
 
 	struct blob_buf bb;
+	memset(&bb,0,sizeof(struct blob_buf));
 
 	blob_buf_init(&bb, 0);
-	blobmsg_buf_init(&bb);
 
 	strcpy(path, blobmsg_data(tb[DM_SET_PATH]));
-	strcpy(value, blobmsg_data(tb[DM_SET_VALUE]));
 
 	filter_results(path, 0, strlen(path));
-	create_set_response(&bb, value);
+
+	if (tb[DM_SET_VALUE]) {
+		strcpy(value, blobmsg_data(tb[DM_SET_VALUE]));
+		create_set_response(&bb, value);
+	}
+
+	if(tb[DM_SET_VALUE_TABLE]) {
+		set_multiple_values(&bb, tb[DM_SET_VALUE_TABLE]);
+	}
 
 	ubus_send_reply(ctx, req, bb.head);
 	blob_buf_free(&bb);
@@ -112,7 +120,7 @@ int usp_set(struct ubus_context *ctx, struct ubus_object *obj,
 
 static const struct blobmsg_policy dm_operate_policy[__DM_OPERATE_MAX] = {
 	[DM_OPERATE_PATH] = { .name = "path", .type = BLOBMSG_TYPE_STRING },
-	[DM_OPERATE_ACTION] = { .name = "action", .type = BLOBMSG_TYPE_STRING },
+	[DM_OPERATE_ACTION] = { .name = "action", .type = BLOBMSG_TYPE_STRING }
 };
 
 int usp_operate(struct ubus_context *ctx, struct ubus_object *obj,
@@ -136,9 +144,8 @@ int usp_operate(struct ubus_context *ctx, struct ubus_object *obj,
 	if (!(tb[DM_OPERATE_ACTION]))
 		return UBUS_STATUS_INVALID_ARGUMENT;
 
+	memset(&bb, 0, sizeof(struct blob_buf));
 	blob_buf_init(&bb, 0);
-	blobmsg_buf_init(&bb);
-
 
 	strcpy(path, blobmsg_data(tb[DM_OPERATE_PATH]));
 	strcpy(cmd, blobmsg_data(tb[DM_OPERATE_ACTION]));

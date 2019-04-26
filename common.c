@@ -22,7 +22,7 @@
 
 #include "common.h"
 
-#define GLOB_CHAR "[[+*#]+"
+#define GLOB_CHAR "[[+*]+"
 #define DELIM '.'
 #define RESULT_STACK 15
 
@@ -78,7 +78,7 @@ bool pop() {
 
 bool top() {
 	if(is_stack_empty()) {
-		INFO("Stack empty, no top");
+		DEBUG("Stack empty, no top");
 		return false;
 	}
 	return true;
@@ -120,24 +120,40 @@ static void cwmp_cleanup(struct dmctx *dm_ctx) {
 //if matched start will have first match index, end will have end index
 static bool is_res_required(char *str, int *start, int *len) {
 
+	DEBUG("Entry |%s|", str);
 	if (match(str, GLOB_CHAR)) {
-		int s_len=0, b_len=0;
+		int s_len=strlen(str);
+		int b_len=s_len, p_len=s_len;
+
 		char *star = strchr(str, '*');
 		char *b_start = strchr(str, '[');
 		char *b_end = strchr(str, ']');
-		s_len = abs(star - str);
-		b_len = abs(b_start - str);
+		char *plus = strchr(str, '+');
 
-		if(start==NULL)
-			return true;
+		if(star)
+			s_len = star - str;
 
-		*start = MIN(s_len, b_len);
+		if(b_start)
+			b_len = b_start - str;
+
+		if(plus)
+			p_len = plus - str;
+
+		*start = MIN(MIN(s_len, p_len), b_len);
 		if (*start == s_len) {
 			*len = 1;
+		} else if (*start == p_len) {
+			int i=0, index=0;
+			while((str+i)!=plus){
+				if(str[i] == DELIM)
+					index = i;
+				++i;
+			}
+			*start = index+1;
+			*len = p_len - index;
 		} else {
 			*len = abs(b_end - b_start );
 		}
-
 		return true;
 	}
 	*start = strlen(str);
@@ -208,7 +224,7 @@ static void delete_result() {
 	resultnode *ptr = rnode, *temp;
 	DEBUG("Entry");
 	if ( ptr == NULL) {
-		INFO("Result List is empty");
+		DEBUG("Result List is empty");
 	}
 	//start from the beginning
 	while(ptr != NULL) {
@@ -417,30 +433,6 @@ static void process_result(struct blob_buf *bb, unsigned int len) {
 						g_result[rtop].key = strdup(temp);
 					}
 				}
-
-			} else {
-				push();
-				char temp[NAME_MAX] = {'\0'};
-				strncpy(temp, rnode->name, len);
-				strcat(temp, pn);
-				//INFO("Push2 |%s|, node|%s|", temp, pn);
-				len = strlen(temp);
-
-				char table_name[NAME_MAX]={'\0'};
-				strncpy(table_name, pn, strlen(pn)-1);
-
-				if(is_node_instance(rnode->name + len)) {
-					//INFO("Open table |%s|", table_name);
-					g_result[rtop].cookie = blobmsg_open_array(bb, table_name);
-					g_result[rtop].key = strdup(temp);
-				} else {
-					if(is_node_instance(pn)) {
-						g_result[rtop].cookie = blobmsg_open_table(bb, NULL);
-					} else {
-						g_result[rtop].cookie = blobmsg_open_table(bb, table_name);
-					}
-					g_result[rtop].key = strdup(temp);
-				}
 			}
 			process_result(bb, len);
 		}
@@ -519,17 +511,38 @@ static int get_glob_len(char *path) {
 	return(ret);
 }
 
+bool is_search_by_reference(char *path) {
+	int m_index = 0, m_len=0;
+	char *last_plus = strrchr(path, '+');
+	char *last_bracket = strrchr(path, ']');
+	DEBUG("Entry |%s|", path);
+
+	if(!is_res_required(path, &m_index, &m_len))
+		return false;
+
+	if(!last_plus)
+		return false;
+
+	if(!last_bracket)
+		return true;
+
+	return ((last_plus-last_bracket)>0?true:false);
+}
+
 bool cwmp_get_value(char *path, bool fill, char *query_path) {
 	struct dmctx dm_ctx = {0};
 	struct dm_parameter *n;
 	int plen = get_glob_len(query_path);
-
-	DEBUG("Entry path |%s|, fill|%d|, query_path|%s|", path, fill, query_path);
+	DEBUG("Entry path |%s|, fill|%d|, query_path|%s|, plen|%d|", path, fill, query_path, plen);
 
 	cwmp_init(&dm_ctx);
 	if(cwmp_get(CMD_GET_VALUE, path, &dm_ctx)) {
 		if(fill) {
 			list_for_each_entry(n, &dm_ctx.list_parameter, list) {
+				if(is_search_by_reference(query_path)) {
+					char *end_delim = strrchr(n->name, DELIM);
+					plen = end_delim - n->name;
+				}
 				DEBUG("insert node|%s|, value|%s| ", n->name+plen, n->data);
 				insert_result(n->name+plen, n->data, n->type);
 			}
@@ -709,22 +722,26 @@ static void solve(char *exp) {
 	deleteList();
 }
 
-static int expand_expression(char *path, char *exp) {
-	DEBUG("Entry path|%s|, exp|%s|", path, exp);
-	int shiftpos;
-
+static void fill_node_path() {
 	pathnode *p=head;
 	while(p!=NULL) {
 		cwmp_get_name(p->ref_path);
 		p=p->next;
 	}
 	deleteList();
+}
+
+static int expand_expression(char *path, char *exp) {
+	DEBUG("Entry path|%s|, exp|%s|", path, exp);
+	int shiftpos;
 
 	switch(exp[0]) {
 		case '*':
+			fill_node_path();
 			shiftpos = 2;
 			break;
 		case '[':
+			fill_node_path();
 			// Get multiple tokens and then evaluate
 			shiftpos = strlen(exp) + 2;
 			char *token;
@@ -734,6 +751,49 @@ static int expand_expression(char *path, char *exp) {
 				DEBUG("solve %s", token );
 				solve(token);
 			}
+			break;
+		case 'A' ... 'Z': // search by reference
+		case 'a' ... 'z':
+			shiftpos = strlen(exp)+1;
+			char *sharp = strchr(exp, '#');
+			int ref_number=1;
+			char *node = NULL;
+			char name[NAME_MAX] = {'\0'};
+			char path[NAME_MAX] = {'\0'};
+			if(sharp) {
+				ref_number = atoi(sharp +1);
+				DEBUG("sharp |%s|, ins |%d|", sharp, ref_number);
+			}
+			char *plus = strchr(exp, '+');
+
+			if(!plus) {
+				ERR("solver not available[%s]", exp);
+				break;
+			}
+
+			if(sharp)
+				strncpy(name, exp, sharp - exp);
+			else
+				strncpy(name, exp, plus - exp);
+
+			pathnode *p=head;
+			while(p!=NULL) {
+				char *token = NULL;
+				sprintf(path,"%s%s", p->ref_path, name);
+				node = cwmp_get_value_by_id(path);
+				int node_count = 1;
+				while ((token = strtok_r(node, ",", &node))) {
+					if(node_count == ref_number)
+						break;
+					node_count++;
+				}
+				if(token) // Error handling if non-existent ref_num is given
+					insert(strdup(token), false);
+
+				p=p->next;
+				free(node);
+			}
+			deleteList();
 			break;
 		default:
 			ERR("Unsupported case[%c]", path[0]);

@@ -111,10 +111,11 @@ int usp_set(struct ubus_context *ctx, struct ubus_object *obj,
 	if(tb[DM_SET_VALUE_TABLE]) {
 		set_multiple_values(&bb, tb[DM_SET_VALUE_TABLE]);
 	}
-
 	ubus_send_reply(ctx, req, bb.head);
 	blob_buf_free(&bb);
 
+	// Restart all the affected services
+	dm_entry_restart_services();
 	return 0;
 }
 

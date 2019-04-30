@@ -23,12 +23,15 @@
 #include "common.h"
 
 #define GLOB_CHAR "[[+*]+"
+#define GLOB_EXPR "[=><]+"
 #define DELIM '.'
 #define RESULT_STACK 15
 
 static bool is_node_instance(char *path);
 static bool is_leaf(char *path, char *);
 static void process_result(struct blob_buf *bb, unsigned int len);
+bool match(const char *string, const char *pattern);
+
 // Global variables
 typedef struct resultnode {
 	char *name;
@@ -93,10 +96,42 @@ bool is_str_eq(char *s1, char *s2) {
 }
 
 static bool is_node_instance(char *path) {
-	int ins = -1;
+	bool ret = false;
+	DEBUG("entry |%s|", path);
+	if(path[0]=='[') {
+		char *rb = NULL;
+		rb = strchr(path, ']');
+		char temp_char[NAME_MAX] = {'\0'};
+		strncpy(temp_char, path, rb-path);
+		if(!match(temp_char, GLOB_EXPR))
+			ret = true;
+	} else {
+		if(atoi(path))
+			ret = true;
+	}
+	return(ret);
+}
 
-	ins = atoi(path);
-	return(ins != 0);
+int get_uci_option_string(char *package, char *section, char *option, char **value) {
+	struct uci_context *uci_ctx=NULL;
+	struct uci_ptr ptr = {0};
+	bool ret = true;
+	uci_ctx = uci_alloc_context();
+
+	if (dmuci_lookup_ptr(uci_ctx, &ptr, package, section, option, NULL)) {
+		*value = "";
+		ret = false;
+	}
+	else if (ptr.o && ptr.o->v.string) {
+		*value = strdup(ptr.o->v.string);
+	} else {
+		*value = "";
+		ret = false;
+	}
+	if (uci_ctx)
+		uci_free_context(uci_ctx);
+
+	return(ret);
 }
 
 // RE utilities
@@ -109,8 +144,14 @@ bool match(const char *string, const char *pattern) {
 	return true;
 }
 
-static void cwmp_init(struct dmctx *dm_ctx) {
-	dm_ctx_init(dm_ctx, DM_CWMP, AMD_2, INSTANCE_MODE_NUMBER);
+static void cwmp_init(struct dmctx *dm_ctx, char *path) {
+	int amd = AMD_2, instance = INSTANCE_MODE_ALIAS;
+	if(match(path, "[[]+")) {
+		if(!match(path, GLOB_EXPR)) {
+			amd = AMD_5;
+		}
+	}
+	dm_ctx_init(dm_ctx, DM_CWMP, amd, instance);
 }
 
 static void cwmp_cleanup(struct dmctx *dm_ctx) {
@@ -154,7 +195,15 @@ static bool is_res_required(char *str, int *start, int *len) {
 		} else {
 			*len = abs(b_end - b_start );
 		}
-		return true;
+
+		// Check if naming with aliases used
+		char temp_char[NAME_MAX] = {'\0'};
+		strncpy(temp_char, str+*start, *len);
+		if(match(temp_char, GLOB_EXPR))
+			return true;
+
+		if(match(temp_char, "[*+]+"))
+			return true;
 	}
 	*start = strlen(str);
 	return false;
@@ -332,7 +381,7 @@ bool cwmp_get_name(char *path) {
 	struct dm_parameter *n;
 	bool ret = false;
 
-	cwmp_init(&dm_ctx);
+	cwmp_init(&dm_ctx, path);
 	if(cwmp_get(CMD_GET_NAME, path, &dm_ctx)) {
 		list_for_each_entry(n, &dm_ctx.list_parameter, list) {
 			DEBUG("get and insert |%s|", n->name);
@@ -350,7 +399,7 @@ char *cwmp_get_value_by_id(char *id) {
 	char *value = NULL;
 
 	DEBUG("Entry id |%s|", id);
-	cwmp_init(&dm_ctx);
+	cwmp_init(&dm_ctx, id);
 	if(cwmp_get(CMD_GET_VALUE, id, &dm_ctx)) {
 			list_for_each_entry(n, &dm_ctx.list_parameter, list) {
 				DEBUG("value |%s|", n->name);
@@ -535,7 +584,7 @@ bool cwmp_get_value(char *path, bool fill, char *query_path) {
 	int plen = get_glob_len(query_path);
 	DEBUG("Entry path |%s|, fill|%d|, query_path|%s|, plen|%d|", path, fill, query_path, plen);
 
-	cwmp_init(&dm_ctx);
+	cwmp_init(&dm_ctx, path);
 	if(cwmp_get(CMD_GET_VALUE, path, &dm_ctx)) {
 		if(fill) {
 			list_for_each_entry(n, &dm_ctx.list_parameter, list) {
@@ -570,7 +619,7 @@ static bool cwmp_get_name_exp(char *path, char *operator, char *operand) {
 	struct dm_parameter *n;
 	bool ret = false;
 
-	cwmp_init(&dm_ctx);
+	cwmp_init(&dm_ctx, path);
 	if(cwmp_get(CMD_GET_VALUE, path, &dm_ctx)) {
 		list_for_each_entry(n, &dm_ctx.list_parameter, list) {
 			DEBUG("Get |%s| value|%s| operator|%s|", path, n->data, operator);
@@ -605,7 +654,7 @@ bool cwmp_set_value(struct blob_buf *bb, char *path, char *value) {
 	struct dmctx *p_dmctx = &dm_ctx;
 	void *bb_array = blobmsg_open_table(bb, NULL);
 
-	cwmp_init(&dm_ctx);
+	cwmp_init(&dm_ctx, path);
 	DEBUG("Entry path|%s|, value|%s|", path, value);
 	fault = dm_entry_param_method(&dm_ctx, CMD_SET_VALUE, path, value, NULL);
 

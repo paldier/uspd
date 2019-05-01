@@ -4,6 +4,7 @@
  * Copyright (C) 2019 iopsys Software Solutions AB. All rights reserved.
  *
  * Author: Vivek Dutta <v.dutta@gxgroup.eu>
+ * Author: Yashvardhan <y.yashvardhan@gxgroup.eu>
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -25,27 +26,24 @@
 
 extern pathnode *head;
 // Operate function definations
-static void opr_reboot_device(char *p) {
+static void reboot_device(char *p) {
 	DEBUG("entry");
-	dmubus_call_set("system", "reboot", UBUS_ARGS{}, 0);
+	dmubus_call_set(SYSTEM_UBUS_PATH, "reboot", UBUS_ARGS{}, 0);
 }
 
-static void opr_factory_reset(char *p) {
+static void factory_reset(char *p) {
 	DEBUG("Entry");
 	dmcmd_no_wait("/sbin/defaultreset", 0);
 }
 
-static void opr_in_progress(char *p) {
-	DEBUG("Not implemented!");
-}
-
-static void opr_network_reset(char *p) {
+static void network_reset(char *p) {
 	char *ret = strrchr(p, '.');
 	char name[MAXNAMLEN] = {'\0'};
-	char cmd[NAME_MAX] = "network.interface.";
+	char cmd[NAME_MAX] = NETWORK_INTERFACE_UBUS_PATH;
 
 	DEBUG("Entry path|%s|", p);
 
+	snprintf(cmd + strlen(cmd), NAME_MAX - strlen(cmd), "%s", ".");
 	strncpy(name, p, ret - p +1);
 	strcat(name, "Name");
 	char *zone = NULL;
@@ -62,10 +60,26 @@ static void opr_network_reset(char *p) {
 	dmubus_call_set(cmd, "up", UBUS_ARGS{}, 0);
 }
 
+static void wireless_reset(char *p)
+{
+	dmcmd_no_wait("/sbin/wifi", 2, "reload", "&");
+}
+
+static void dhcpv4_client_renew(char *p)
+{
+	struct blob_buf blob;
+	memset(&blob, 0, sizeof(blob));
+	blob_buf_init(&blob, 0);
+
+	cwmp_set_value(&blob, p, "true");
+}
+
 static struct op_cmd operate_helper[] = {
-	[0] = {"Device.Reboot", opr_reboot_device},
-	[1] = {"Device.FactoryReset", opr_factory_reset},
-	[2] = {"Device.IP.Interface.*.Reset", opr_network_reset}
+	[0] = {"Device.Reboot", reboot_device},
+	[1] = {"Device.FactoryReset", factory_reset},
+	[2] = {"Device.IP.Interface.*.Reset", network_reset},
+	[3] = {"Device.WiFi.Reset", wireless_reset},
+	[4] = {"Device.DHCPv4.Client.*.Renew", dhcpv4_client_renew}
 };
 
 static void operate_on_node(struct blob_buf *bb, char *path) {

@@ -1,5 +1,10 @@
 #ifndef OPERATE_H
 #define OPERATE_H
+
+#define SYSTEM_UBUS_PATH "system"
+#define NETWORK_INTERFACE_UBUS_PATH "network.interface"
+#define NETWORK_WIRELESS_UBUS_PATH "network.wireless"
+
 enum {
 	DM_OPERATE_PATH,
 	DM_OPERATE_ACTION,

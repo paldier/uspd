@@ -144,7 +144,7 @@ bool match(const char *string, const char *pattern) {
 	return true;
 }
 
-static void cwmp_init(struct dmctx *dm_ctx, char *path) {
+void cwmp_init(struct dmctx *dm_ctx, char *path) {
 	int amd = AMD_2, instance = INSTANCE_MODE_ALIAS;
 	if(match(path, "[[]+")) {
 		if(!match(path, GLOB_EXPR)) {
@@ -154,7 +154,7 @@ static void cwmp_init(struct dmctx *dm_ctx, char *path) {
 	dm_ctx_init(dm_ctx, DM_CWMP, amd, instance);
 }
 
-static void cwmp_cleanup(struct dmctx *dm_ctx) {
+void cwmp_cleanup(struct dmctx *dm_ctx) {
 	dm_ctx_clean(dm_ctx);
 }
 
@@ -253,7 +253,7 @@ static void swap_heads() {
 
 // Insert link at the first location
 static void insert_result(char *name, char *value, char *type) {
-	DEBUG("Entry result |%s| value|%d|", name, value);
+	DEBUG("Entry result|%s| value|%s|", name, value);
 	//create a link
 	resultnode *link = (resultnode*) calloc(1, sizeof(resultnode));
 	if(!link) {
@@ -782,7 +782,7 @@ static void fill_node_path() {
 
 static int expand_expression(char *path, char *exp) {
 	DEBUG("Entry path|%s|, exp|%s|", path, exp);
-	int shiftpos;
+	int shiftpos = 0;
 
 	switch(exp[0]) {
 		case '*':

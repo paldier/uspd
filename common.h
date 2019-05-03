@@ -16,12 +16,16 @@
 #include <libdatamodel/dmcommon.h>
 #include <libdatamodel/dmentry.h>
 
+#define STRING_DEFAULT 256
+
 typedef struct pathnode {
 	char *ref_path;
 	struct pathnode *next;
 } pathnode;
 
 
+void cwmp_init(struct dmctx *dm_ctx, char *path);
+void cwmp_cleanup(struct dmctx *dm_ctx);
 char *cwmp_get_value_by_id(char *id);
 bool cwmp_set_value(struct blob_buf *bb, char *path, char *value);
 bool cwmp_get_value(char *path, bool fill, char *query_path);

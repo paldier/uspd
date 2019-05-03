@@ -23,7 +23,6 @@
 #include "common.h"
 
 // Dummy function definations for libdatamodel binding
-#define DM_USE_LIBUBUS
 void puts_log(int severity, const char *fmt, ...) {
 	DEBUG("Dummy funtion");
 	if(severity && fmt){}

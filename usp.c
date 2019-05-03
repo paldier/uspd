@@ -33,7 +33,6 @@
 #include "operate.h"
 #include "common.h"
 
-
 static const struct blobmsg_policy dm_get_policy[__DM_MAX] = {
 	[DMPATH_NAME] = { .name = "path", .type = BLOBMSG_TYPE_STRING }
 };
@@ -42,8 +41,8 @@ static int usp_get(struct ubus_context *ctx, struct ubus_object *obj,
 		struct ubus_request_data *req, const char *method,
 		struct blob_attr *msg)
 {
-	DEBUG("Entry");
-	struct blob_attr *tb[__DM_MAX];
+	DEBUG("Entry method|%s| ubus name|%s|", method, obj->name);
+	struct blob_attr *tb[__DM_MAX] = {NULL};
 	char path[PATH_MAX] = {'\0'};
 
 	if(blobmsg_parse(dm_get_policy, __DM_MAX, tb, blob_data(msg), blob_len(msg))) {
@@ -79,8 +78,8 @@ int usp_set(struct ubus_context *ctx, struct ubus_object *obj,
 		struct ubus_request_data *req, const char *method,
 		struct blob_attr *msg)
 {
-	DEBUG("Entry");
-	struct blob_attr *tb[__DMSET_MAX];
+	DEBUG("Entry method|%s| ubus name|%s|", method, obj->name);
+	struct blob_attr *tb[__DMSET_MAX] = {NULL};
 	char path[PATH_MAX]={'\0'}, value[NAME_MAX]={'\0'};
 
 	if(blobmsg_parse(dm_set_policy, __DMSET_MAX, tb, blob_data(msg), blob_len(msg))) {
@@ -121,18 +120,19 @@ int usp_set(struct ubus_context *ctx, struct ubus_object *obj,
 
 static const struct blobmsg_policy dm_operate_policy[__DM_OPERATE_MAX] = {
 	[DM_OPERATE_PATH] = { .name = "path", .type = BLOBMSG_TYPE_STRING },
-	[DM_OPERATE_ACTION] = { .name = "action", .type = BLOBMSG_TYPE_STRING }
+	[DM_OPERATE_ACTION] = { .name = "action", .type = BLOBMSG_TYPE_STRING },
+	[DM_OPERATE_INPUT] = { .name = "input", .type = BLOBMSG_TYPE_TABLE }
 };
 
 int usp_operate(struct ubus_context *ctx, struct ubus_object *obj,
 		struct ubus_request_data *req, const char *method,
 		struct blob_attr *msg)
 {
-	struct blob_attr *tb[__DM_OPERATE_MAX];
+	struct blob_attr *tb[__DM_OPERATE_MAX] = {NULL};
 	struct blob_buf bb;
 	char path[PATH_MAX]={'\0'};
 	char cmd[NAME_MAX]={'\0'};
-	DEBUG("Entry");
+	INFO("Entry method|%s| ubus name|%s|", method, obj->name);
 
 	if(blobmsg_parse(dm_operate_policy, __DM_OPERATE_MAX, tb, blob_data(msg), blob_len(msg))) {
 		ERR("Failed to parse blob");
@@ -153,7 +153,8 @@ int usp_operate(struct ubus_context *ctx, struct ubus_object *obj,
 
 	filter_results(path, 0, strlen(path));
 
-	create_operate_response(&bb, cmd);
+	if(UBUS_INVALID_ARGUMENTS == create_operate_response(&bb, cmd, tb[DM_OPERATE_INPUT]))
+		return UBUS_STATUS_INVALID_ARGUMENT;
 
 	ubus_send_reply(ctx, req, bb.head);
 	blob_buf_free(&bb);

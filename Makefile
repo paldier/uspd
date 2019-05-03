@@ -1,7 +1,7 @@
 PROG = uspd
 OBJS =common.o get.o set.o operate.o dummy.o usp.o
 
-PROG_CFLAGS = $(CFLAGS) -fstrict-aliasing -Wall -Wextra
+PROG_CFLAGS = $(CFLAGS) -fstrict-aliasing -Wall -Wextra -DDM_USE_LIBUBUS
 PROG_LDFLAGS = $(LDFLAGS)
 PROG_LDFLAGS += -luci -lubus -lubox -ljson-c -lblobmsg_json -ldatamodel
 

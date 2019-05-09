@@ -1,6 +1,8 @@
 #ifndef OPERATE_H
 #define OPERATE_H
 
+#include "common.h"
+
 #define SYSTEM_UBUS_PATH "system"
 #define NETWORK_INTERFACE_UBUS_PATH "network.interface"
 #define NETWORK_WIRELESS_UBUS_PATH "network.wireless"
@@ -24,6 +26,13 @@ enum operate_ret_status{
 typedef enum operate_ret_status opr_ret_t;
 
 typedef opr_ret_t (*operation) (struct blob_buf *bb, char *p, struct blob_attr *bv);
+
+struct wifi_security_params {
+	char node[MAXNAMLEN];
+	char *param;
+	char value[MAXNAMLEN];
+};
+
 
 struct op_cmd {
 	char *name;

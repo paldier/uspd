@@ -40,6 +40,8 @@ bool is_str_eq(char *s1, char *s2);
 bool match(const char *string, const char *pattern);
 void prepare_result(struct blob_buf *bb);
 
+bool db_get_value(char *package, char *section, char *option, char **value);
+
 #define DEBUG_ENABLED 0
 #define DEBUG(fmt, args...) \
 do { \

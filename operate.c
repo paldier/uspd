@@ -48,7 +48,7 @@ static opr_ret_t factory_reset(struct blob_buf *bb, uint8_t *p, struct blob_attr
 	return SUCCESS;
 }
 
-static opr_ret_t network_reset(struct blob_buf *bb, char *p, struct blob_attr *bv) {
+static opr_ret_t network_interface_reset(struct blob_buf *bb, char *p, struct blob_attr *bv) {
 	char *ret = strrchr(p, '.');
 	char name[MAXNAMLEN] = {'\0'};
 	char cmd[NAME_MAX] = NETWORK_INTERFACE_UBUS_PATH;
@@ -65,7 +65,7 @@ static opr_ret_t network_reset(struct blob_buf *bb, char *p, struct blob_attr *b
 		strcat(cmd, zone);
 		free(zone);
 	} else {
-		ERR("Network not rechable |%s|", cmd);
+		ERR("Network not reachable |%s|", cmd);
 		return FAIL;
 	}
 	DEBUG("cmd |%s|", cmd);
@@ -90,7 +90,48 @@ static opr_ret_t wireless_reset(struct blob_buf *bb, char *p, struct blob_attr *
 	return SUCCESS;
 }
 
-static opr_ret_t dhcpv4_client_renew(struct blob_buf *bb, char *p, struct blob_attr *bv)
+struct wifi_security_params reset_params[] = {
+	{"", "ModeEnabled", ""},
+	{"", "PreSharedKey", ""},
+	{"", "KeyPassphrase", ""}
+};
+
+static opr_ret_t ap_security_reset(struct blob_buf *bb, char *p, struct
+					 blob_attr *bv)
+{
+	char *wpakey = NULL;
+	char node[MAXNAMLEN] = {'\0'};
+	int i, len = 0;
+
+	char *ret = strrchr(p, '.');
+	strncpy(node, p, ret - p +1);
+
+	len = ARRAY_SIZE(reset_params);
+
+	for (i = 0; i < len; i++) {
+		strncpy(reset_params[i].node, node, MAXNAMLEN);
+		strcat(reset_params[i].node, reset_params[i].param);
+		DEBUG("Node|%s|", reset_params[i].node);
+	}
+	const char *mode_enabled = "WPA2-Personal";
+
+	// Default mode - WPA2-Personal
+	strncpy(reset_params[0].value, mode_enabled, MAXNAMLEN);
+
+	// Get Default wpakey
+	db_get_value("hw", "board", "wpaKey", &wpakey);
+
+	// PreSharedKey and KeyPassphrase are kept same
+	strncpy(reset_params[1].value, wpakey, MAXNAMLEN);
+	strncpy(reset_params[2].value, wpakey, MAXNAMLEN);
+
+	for (i = 0; i < len; i++) {
+		cwmp_set_value(bb, reset_params[i].node, reset_params[i].value);
+	}
+	return SUCCESS;
+}
+
+static opr_ret_t dhcp_client_renew(struct blob_buf *bb, char *p, struct blob_attr *bv)
 {
 	DEBUG("entry |%s| |%s|", p, bv->data);
 
@@ -203,7 +244,7 @@ static opr_ret_t vendor_conf_backup(struct blob_buf *bb, char *path, struct blob
 	if(!get_value_from_blob(bv, "Password", pass))
 		return UBUS_INVALID_ARGUMENTS;
 
-	get_value_from_blob(bv, "test", t);
+	// get_value_from_blob(bv, "test", t);
 
 	DEBUG("url|%s|, user|%s|, pass|%s|", url, user, pass);
 	//test = atoi(t);
@@ -215,16 +256,16 @@ static opr_ret_t vendor_conf_backup(struct blob_buf *bb, char *path, struct blob
 static struct op_cmd operate_helper[] = {
 	{"Device.Reboot", reboot_device},
 	{"Device.FactoryReset", factory_reset},
-	{"Device.IP.Interface.*.Reset", network_reset},
+	{"Device.IP.Interface.*.Reset", network_interface_reset},
+	{"Device.PPP.Interface.*.Reset", network_interface_reset},
 	{"Device.WiFi.Reset", wireless_reset},
-	{"Device.DHCPv4.Client.*.Renew", dhcpv4_client_renew},
-	{"Device.WiFi.NeighboringWiFiDiagnostic", fetch_neighboring_wifi_diagnostic},
-	{"Device.DeviceInfo.VendorConfigFile.*.Backup", vendor_conf_backup},
-	//{"Device.DHCPv6.Client.*.Renew", blob_parser},
+	{"Device.WiFi.AccessPoint.*.Security.Reset", ap_security_reset},
+	{"Device.DHCPv4.Client.*.Renew", dhcp_client_renew},
+	{"Device.DHCPv6.Client.*.Renew", dhcp_client_renew}
+	//{"Device.WiFi.NeighboringWiFiDiagnostic", fetch_neighboring_wifi_diagnostic},
+	//{"Device.DeviceInfo.VendorConfigFile.*.Backup", vendor_conf_backup}
 	//{"Device.DeviceInfo.VendorConfigFile.*.Restore", blob_parser},
 	//{"Device.DeviceInfo.VendorLogFile.*.Upload", blob_parser},
-	//{"Device.WiFi.AccessPoint.*.Security.Reset", blob_parser},
-	//{"Device.PPP.Interface.*.Reset", blob_parser},
 	//{"Device.IP.Diagnostics.IPPing", blob_parser},
 	//{"Device.IP.Diagnostics.TraceRoute", blob_parser},
 	//{"Device.IP.Diagnostics.DownloadDiagnostics", blob_parser},

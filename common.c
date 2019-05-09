@@ -31,6 +31,7 @@ static bool is_node_instance(char *path);
 static bool is_leaf(char *path, char *);
 static void process_result(struct blob_buf *bb, unsigned int len);
 bool match(const char *string, const char *pattern);
+struct uci_context *uci_ctx = NULL;
 
 // Global variables
 typedef struct resultnode {
@@ -112,11 +113,45 @@ static bool is_node_instance(char *path) {
 	return(ret);
 }
 
+int usp_uci_init(void)
+{
+	uci_ctx = uci_alloc_context();
+	if (!uci_ctx) {
+		return -1;
+	}
+	return 0;
+}
+
+int usp_uci_teardown(void)
+{
+	if (uci_ctx) {
+		uci_free_context(uci_ctx);
+	}
+	uci_ctx = NULL;
+	return 0;
+}
+
+bool db_get_value(char *package, char *section, char *option, char **value)
+{
+	struct uci_option *o;
+	bool ret = true;
+	usp_uci_init();
+
+	o = dmuci_get_option_ptr(DB_CONFIG, package, section, option);
+	if (o) {
+		*value = o->v.string ? dmstrdup(o->v.string) : "";
+	} else {
+		*value = "";
+		ret = false;
+	}
+	usp_uci_teardown();
+	return (ret);
+}
+
 int get_uci_option_string(char *package, char *section, char *option, char **value) {
-	struct uci_context *uci_ctx=NULL;
 	struct uci_ptr ptr = {0};
 	bool ret = true;
-	uci_ctx = uci_alloc_context();
+	usp_uci_init();
 
 	if (dmuci_lookup_ptr(uci_ctx, &ptr, package, section, option, NULL)) {
 		*value = "";
@@ -128,8 +163,7 @@ int get_uci_option_string(char *package, char *section, char *option, char **val
 		*value = "";
 		ret = false;
 	}
-	if (uci_ctx)
-		uci_free_context(uci_ctx);
+	usp_uci_teardown();
 
 	return(ret);
 }

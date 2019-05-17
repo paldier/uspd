@@ -7,6 +7,8 @@
 #define NETWORK_INTERFACE_UBUS_PATH "network.interface"
 #define NETWORK_WIRELESS_UBUS_PATH "network.wireless"
 #define ROUTER_WIRELESS_UBUS_PATH "router.wireless"
+#define ICWMP_SCRIPT "/usr/sbin/icwmp"
+#define VCF_FILE_TYPE "3"
 
 enum {
 	DM_OPERATE_PATH,
@@ -25,7 +27,8 @@ enum operate_ret_status{
 
 typedef enum operate_ret_status opr_ret_t;
 
-typedef opr_ret_t (*operation) (struct blob_buf *bb, char *p, struct blob_attr *bv);
+typedef opr_ret_t (*operation) (struct blob_buf *bb, char *p, struct blob_attr
+				*bv);
 
 struct wifi_security_params {
 	char node[MAXNAMLEN];
@@ -33,11 +36,18 @@ struct wifi_security_params {
 	char value[MAXNAMLEN];
 };
 
+struct file_server {
+	char url[STRING_DEFAULT];
+	char user[STRING_DEFAULT];
+	char pass[STRING_DEFAULT];
+	const char *file_type;
+};
 
 struct op_cmd {
 	char *name;
 	operation opt;
 };
 
-opr_ret_t create_operate_response(struct blob_buf *bb, char *cmd, struct blob_attr *bv);
+opr_ret_t create_operate_response(struct blob_buf *bb, char *cmd, struct
+				  blob_attr *bv);
 #endif /* OPERATE_H */

@@ -26,8 +26,10 @@
 
 extern pathnode *head;
 
-// Operate function definations
-static opr_ret_t reboot_device(struct blob_buf *bb, uint8_t *p, struct blob_attr *bv) {
+// Operate function definitions
+static opr_ret_t reboot_device(struct blob_buf *bb, uint8_t *p, struct blob_attr
+			       *bv)
+{
 	DEBUG("entry |%s| |%s|", p, bv->data);
 
 	if(0 == dmubus_call_set(SYSTEM_UBUS_PATH, "reboot", UBUS_ARGS{}, 0))
@@ -38,7 +40,9 @@ static opr_ret_t reboot_device(struct blob_buf *bb, uint8_t *p, struct blob_attr
 	return SUCCESS;
 }
 
-static opr_ret_t factory_reset(struct blob_buf *bb, uint8_t *p, struct blob_attr *bv) {
+static opr_ret_t factory_reset(struct blob_buf *bb, uint8_t *p, struct blob_attr
+			       *bv)
+{
 	DEBUG("entry |%s| |%s|", p, bv->data);
 
 	if(0 == dmcmd_no_wait("/sbin/defaultreset", 0))
@@ -48,19 +52,35 @@ static opr_ret_t factory_reset(struct blob_buf *bb, uint8_t *p, struct blob_attr
 	return SUCCESS;
 }
 
-static opr_ret_t network_interface_reset(struct blob_buf *bb, char *p, struct blob_attr *bv) {
-	char *ret = strrchr(p, '.');
-	char name[MAXNAMLEN] = {'\0'};
+static char *get_param_val_from_op_cmd(char *op_cmd, const char *param)
+{
+	char *val = NULL;
+	char node[MAXNAMLEN] = {'\0'};
+
+	// Trim action from operation command
+	// For eg: trim Reset from Device.IP.Interface.*.Reset
+	char *ret = strrchr(op_cmd, '.');
+	strncpy(node, op_cmd, ret - op_cmd +1);
+
+	// Append param name to the trimmed path
+	strcat(node, param);
+
+	// Get parameter value
+	val = cwmp_get_value_by_id(node);
+	return(val);
+}
+
+static opr_ret_t network_interface_reset(struct blob_buf *bb, char *p, struct
+					 blob_attr *bv)
+{
 	char cmd[NAME_MAX] = NETWORK_INTERFACE_UBUS_PATH;
 	bool status = false;
 
 	DEBUG("entry |%s| |%s|", p, bv->data);
 
 	snprintf(cmd + strlen(cmd), NAME_MAX - strlen(cmd), "%s", ".");
-	strncpy(name, p, ret - p +1);
-	strcat(name, "Name");
 	char *zone = NULL;
-	zone = cwmp_get_value_by_id(name);
+	zone = get_param_val_from_op_cmd(p, "Name");
 	if(zone) {
 		strcat(cmd, zone);
 		free(zone);
@@ -79,7 +99,8 @@ static opr_ret_t network_interface_reset(struct blob_buf *bb, char *p, struct bl
 	return SUCCESS;
 }
 
-static opr_ret_t wireless_reset(struct blob_buf *bb, char *p, struct blob_attr *bv)
+static opr_ret_t wireless_reset(struct blob_buf *bb, char *p, struct blob_attr
+				*bv)
 {
 	DEBUG("entry |%s| |%s|", p, bv->data);
 
@@ -131,7 +152,8 @@ static opr_ret_t ap_security_reset(struct blob_buf *bb, char *p, struct
 	return SUCCESS;
 }
 
-static opr_ret_t dhcp_client_renew(struct blob_buf *bb, char *p, struct blob_attr *bv)
+static opr_ret_t dhcp_client_renew(struct blob_buf *bb, char *p, struct
+				   blob_attr *bv)
 {
 	DEBUG("entry |%s| |%s|", p, bv->data);
 
@@ -139,7 +161,8 @@ static opr_ret_t dhcp_client_renew(struct blob_buf *bb, char *p, struct blob_att
 	return SUCCESS;
 }
 
-static bool get_value_from_blob(struct blob_attr *bv, char *key, char *value) {
+static bool get_value_from_blob(struct blob_attr *bv, char *key, char *value)
+{
 	struct blob_attr *attr;
 	char tlen = blobmsg_data_len(bv);
 
@@ -188,7 +211,8 @@ static bool get_value_from_blob(struct blob_attr *bv, char *key, char *value) {
 static void fill_wireless_scan_results(struct blob_buf *bb, char *radio) {
 	json_object *res, *obj;
 
-	dmubus_call(ROUTER_WIRELESS_UBUS_PATH, "scanresults", UBUS_ARGS{{"radio", radio, String}}, 1, &res);
+	dmubus_call(ROUTER_WIRELESS_UBUS_PATH, "scanresults",
+		    UBUS_ARGS{{"radio", radio, String}}, 1, &res);
 
 	if(!json_object_object_get_ex(res,"access_points", &obj)) {
 		ERR("access_point not found in results");
@@ -208,7 +232,9 @@ static void fill_wireless_scan_results(struct blob_buf *bb, char *radio) {
 	json_object_put(res);
 }
 
-static opr_ret_t fetch_neighboring_wifi_diagnostic(struct blob_buf *bb, char *path, struct blob_attr *bv) {
+static opr_ret_t fetch_neighboring_wifi_diagnostic(struct blob_buf *bb, char
+						   *path, struct blob_attr *bv)
+{
 	struct dmctx dm_ctx = {0};
 	json_object *res;
 	cwmp_init(&dm_ctx, path);
@@ -228,31 +254,72 @@ static opr_ret_t fetch_neighboring_wifi_diagnostic(struct blob_buf *bb, char *pa
 	return SUCCESS;
 }
 
-static opr_ret_t vendor_conf_backup(struct blob_buf *bb, char *path, struct blob_attr *bv) {
-	char url[STRING_DEFAULT]={'\0'}, user[STRING_DEFAULT] = {'\0'}, pass[STRING_DEFAULT] = {'\0'};
-	//char t[123] = {'\0'};
-	//int test = 0;
+static opr_ret_t vendor_conf_backup(struct blob_buf *bb, char *path, struct
+				    blob_attr *bv)
+{
+	struct file_server fserver = {0};
+	char *vcf_name = NULL;
+
+	vcf_name = get_param_val_from_op_cmd(path, "Name");
+	if (!vcf_name)
+		return FAIL;
+
+	if(!get_value_from_blob(bv, "URL", fserver.url))
+		return UBUS_INVALID_ARGUMENTS;
+
+	if(!get_value_from_blob(bv, "Username", fserver.user))
+		return UBUS_INVALID_ARGUMENTS;
+
+	if(!get_value_from_blob(bv, "Password", fserver.pass))
+		return UBUS_INVALID_ARGUMENTS;
+
+	DEBUG("url|%s|, user|%s|, pass|%s|", fserver.url, fserver.user,
+	     fserver.pass);
+
+	dmcmd("/bin/sh", 7, ICWMP_SCRIPT, "upload", fserver.url,
+		   VCF_FILE_TYPE, fserver.user, fserver.pass, vcf_name);
+	// TODO Add error handling
+
+	blobmsg_add_u32(bb, "status", 1);
+	return SUCCESS;
+}
+
+static opr_ret_t vendor_conf_restore(struct blob_buf *bb, char *path, struct
+				     blob_attr *bv)
+{
+	struct file_server fserver = {0};
+	char file_size[128];
 
 	DEBUG("entry |%s| |%s|", path, bv->data);
 
-	if(!get_value_from_blob(bv, "URL", url))
+	if (!get_value_from_blob(bv, "URL", fserver.url))
 		return UBUS_INVALID_ARGUMENTS;
 
-	if(!get_value_from_blob(bv, "Username", user))
+	if (!get_value_from_blob(bv, "Username", fserver.user))
 		return UBUS_INVALID_ARGUMENTS;
 
-	if(!get_value_from_blob(bv, "Password", pass))
+	if (!get_value_from_blob(bv, "Password", fserver.pass))
 		return UBUS_INVALID_ARGUMENTS;
 
-	// get_value_from_blob(bv, "test", t);
+	get_value_from_blob(bv, "FileSize", file_size);
 
-	DEBUG("url|%s|, user|%s|, pass|%s|", url, user, pass);
-	//test = atoi(t);
-	//INFO("test|%d|", test);
+	DEBUG("url|%s|, user|%s|, pass|%s|", fserver.url,
+	     fserver.user, fserver.pass);
 
-	blobmsg_add_u32(bb, "status", 0);
+	dmcmd("/bin/sh", 7, ICWMP_SCRIPT, "download", fserver.url,
+		   file_size, VCF_FILE_TYPE, fserver.user,
+		   fserver.pass);
+	// TODO Add error handling
+
+	if (0 == dmcmd_no_wait("/bin/sh", 4, ICWMP_SCRIPT, "apply",
+			       "download", VCF_FILE_TYPE))
+		blobmsg_add_u32(bb, "status", 1);
+	else
+		blobmsg_add_u32(bb, "status", 0);
+
 	return SUCCESS;
 }
+
 static struct op_cmd operate_helper[] = {
 	{"Device.Reboot", reboot_device},
 	{"Device.FactoryReset", factory_reset},
@@ -261,9 +328,10 @@ static struct op_cmd operate_helper[] = {
 	{"Device.WiFi.Reset", wireless_reset},
 	{"Device.WiFi.AccessPoint.*.Security.Reset", ap_security_reset},
 	{"Device.DHCPv4.Client.*.Renew", dhcp_client_renew},
-	{"Device.DHCPv6.Client.*.Renew", dhcp_client_renew}
-	//{"Device.WiFi.NeighboringWiFiDiagnostic", fetch_neighboring_wifi_diagnostic},
-	//{"Device.DeviceInfo.VendorConfigFile.*.Backup", vendor_conf_backup}
+	{"Device.DHCPv6.Client.*.Renew", dhcp_client_renew},
+	{"Device.DeviceInfo.VendorConfigFile.*.Backup", vendor_conf_backup},
+	{"Device.DeviceInfo.VendorConfigFile.*.Restore", vendor_conf_restore},
+	{"Device.WiFi.NeighboringWiFiDiagnostic", fetch_neighboring_wifi_diagnostic}
 	//{"Device.DeviceInfo.VendorConfigFile.*.Restore", blob_parser},
 	//{"Device.DeviceInfo.VendorLogFile.*.Upload", blob_parser},
 	//{"Device.IP.Diagnostics.IPPing", blob_parser},
@@ -275,7 +343,9 @@ static struct op_cmd operate_helper[] = {
 	//{"Device.DNS.Diagnostics.NSLookupDiagnostics", blob_parser}
 };
 
-static opr_ret_t operate_on_node(struct blob_buf *bb, char *path, struct blob_attr *bv) {
+static opr_ret_t operate_on_node(struct blob_buf *bb, char *path, struct
+				 blob_attr *bv)
+{
 	uint8_t len=0;
 	DEBUG("entry |%s| |%s|", path, bv->data);
 
@@ -288,7 +358,9 @@ static opr_ret_t operate_on_node(struct blob_buf *bb, char *path, struct blob_at
 	return CMD_NOT_FOUND;
 }
 
-opr_ret_t create_operate_response(struct blob_buf *bb, char *cmd, struct blob_attr *bv) {
+opr_ret_t create_operate_response(struct blob_buf *bb, char *cmd, struct
+				  blob_attr *bv)
+{
 	pathnode *p=head;
 
 	DEBUG("entry");
@@ -314,4 +386,3 @@ opr_ret_t create_operate_response(struct blob_buf *bb, char *cmd, struct blob_at
 	deleteList();
 	return SUCCESS;
 }
-

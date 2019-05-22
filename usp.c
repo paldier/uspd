@@ -33,6 +33,9 @@
 #include "operate.h"
 #include "common.h"
 
+#define USP "usp"
+#define RAWUSP "usp.raw"
+
 static const struct blobmsg_policy dm_get_policy[__DM_MAX] = {
 	[DMPATH_NAME] = { .name = "path", .type = BLOBMSG_TYPE_STRING }
 };
@@ -41,7 +44,7 @@ static int usp_get(struct ubus_context *ctx, struct ubus_object *obj,
 		struct ubus_request_data *req, const char *method,
 		struct blob_attr *msg)
 {
-	DEBUG("Entry method|%s| ubus name|%s|", method, obj->name);
+	INFO("Entry method|%s| ubus name|%s|", method, obj->name);
 	struct blob_attr *tb[__DM_MAX] = {NULL};
 	char path[PATH_MAX] = {'\0'};
 
@@ -61,7 +64,11 @@ static int usp_get(struct ubus_context *ctx, struct ubus_object *obj,
 	DEBUG("Path |%s|",path);
 
 	filter_results(path, 0, strlen(path));
-	create_response(&bb, path);
+	if(is_str_eq(obj->name, RAWUSP)) {
+		create_raw_response(&bb);
+	} else {
+		create_response(&bb, path);
+	}
 
 	ubus_send_reply(ctx, req, bb.head);
 	blob_buf_free(&bb);
@@ -171,7 +178,14 @@ static struct ubus_method usp_methods[] = {
 static struct ubus_object_type usp_type = UBUS_OBJECT_TYPE("usp", usp_methods);
 
 static struct ubus_object usp_object = {
-	.name = "usp",
+	.name = USP,
+	.type = &usp_type,
+	.methods = usp_methods,
+	.n_methods = ARRAY_SIZE(usp_methods),
+};
+
+static struct ubus_object usp_raw_object = {
+	.name = RAWUSP,
 	.type = &usp_type,
 	.methods = usp_methods,
 	.n_methods = ARRAY_SIZE(usp_methods),
@@ -182,6 +196,10 @@ static void usp_init(struct ubus_context *ctx)
 	int ret;
 
 	ret = ubus_add_object(ctx, &usp_object);
+	if (ret)
+		ERR("Failed to add 'usp' ubus object: %s\n", ubus_strerror(ret));
+
+	ret = ubus_add_object(ctx, &usp_raw_object);
 	if (ret)
 		ERR("Failed to add 'usp' ubus object: %s\n", ubus_strerror(ret));
 

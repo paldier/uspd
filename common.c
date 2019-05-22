@@ -635,6 +635,26 @@ bool cwmp_get_value(char *path, bool fill, char *query_path) {
 	return true;
 }
 
+bool cwmp_get_value_raw(char *path, struct blob_buf *bb) {
+	struct dmctx dm_ctx = {0};
+	struct dm_parameter *n;
+	DEBUG("Entry path |%s|", path);
+
+	cwmp_init(&dm_ctx, path);
+	if(cwmp_get(CMD_GET_VALUE, path, &dm_ctx)) {
+		void *array = blobmsg_open_array(bb, "parameters");
+		list_for_each_entry(n, &dm_ctx.list_parameter, list) {
+			void *table = blobmsg_open_table(bb, NULL);
+			blobmsg_add_string(bb, "parameter", n->name);
+			blobmsg_add_string(bb, "value", n->data);
+			blobmsg_add_string(bb, "type", n->type);
+			blobmsg_close_table(bb, table);
+		}
+		blobmsg_close_array(bb, array);
+	}
+	cwmp_cleanup(&dm_ctx);
+	return true;
+}
 void prepare_result(struct blob_buf *bb) {
 	rev_result();
 	resultnode *rhead = rnode;

@@ -35,3 +35,14 @@ void create_response(struct blob_buf *bb, char *qpath) {
 	prepare_result(bb);
 }
 
+void create_raw_response(struct blob_buf *bb) {
+	pathnode *p=head;
+	p = head;
+	while(p!=NULL) {
+		cwmp_get_value_raw(p->ref_path, bb);
+		p = p->next;
+	}
+	deleteList();
+	prepare_result(bb);
+}
+

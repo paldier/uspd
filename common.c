@@ -642,7 +642,6 @@ bool cwmp_get_value_raw(char *path, struct blob_buf *bb) {
 
 	cwmp_init(&dm_ctx, path);
 	if(cwmp_get(CMD_GET_VALUE, path, &dm_ctx)) {
-		void *array = blobmsg_open_array(bb, "parameters");
 		list_for_each_entry(n, &dm_ctx.list_parameter, list) {
 			void *table = blobmsg_open_table(bb, NULL);
 			blobmsg_add_string(bb, "parameter", n->name);
@@ -650,7 +649,6 @@ bool cwmp_get_value_raw(char *path, struct blob_buf *bb) {
 			blobmsg_add_string(bb, "type", n->type);
 			blobmsg_close_table(bb, table);
 		}
-		blobmsg_close_array(bb, array);
 	}
 	cwmp_cleanup(&dm_ctx);
 	return true;

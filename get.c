@@ -37,11 +37,12 @@ void create_response(struct blob_buf *bb, char *qpath) {
 
 void create_raw_response(struct blob_buf *bb) {
 	pathnode *p=head;
-	p = head;
+	void *array = blobmsg_open_array(bb, "parameters");
 	while(p!=NULL) {
 		cwmp_get_value_raw(p->ref_path, bb);
 		p = p->next;
 	}
+	blobmsg_close_array(bb, array);
 	deleteList();
 	prepare_result(bb);
 }

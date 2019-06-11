@@ -3,8 +3,8 @@
  *
  * Copyright (C) 2019 iopsys Software Solutions AB. All rights reserved.
  *
- * Author: Vivek Dutta <v.dutta@gxgroup.eu>
- * Author: Yashvardhan <y.yashvardhan@gxgroup.eu>
+ * Author: Vivek Dutta <vivek.dutta@iopsys.eu>
+ * Author: Yashvardhan <y.yashvardhan@iopsys.eu>
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -33,9 +33,9 @@ static opr_ret_t reboot_device(struct blob_buf *bb, uint8_t *p, struct blob_attr
 	DEBUG("entry |%s| |%s|", p, bv->data);
 
 	if(0 == dmubus_call_set(SYSTEM_UBUS_PATH, "reboot", UBUS_ARGS{}, 0))
-		blobmsg_add_u32(bb, "status", 1);
+		blobmsg_add_u8(bb, "status", 1);
 	else
-		blobmsg_add_u32(bb, "status", 0);
+		blobmsg_add_u8(bb, "status", 0);
 
 	return SUCCESS;
 }
@@ -46,9 +46,9 @@ static opr_ret_t factory_reset(struct blob_buf *bb, uint8_t *p, struct blob_attr
 	DEBUG("entry |%s| |%s|", p, bv->data);
 
 	if(0 == dmcmd_no_wait("/sbin/defaultreset", 0))
-		blobmsg_add_u32(bb, "status", 1);
+		blobmsg_add_u8(bb, "status", 1);
 	else
-		blobmsg_add_u32(bb, "status", 0);
+		blobmsg_add_u8(bb, "status", 0);
 	return SUCCESS;
 }
 
@@ -95,7 +95,7 @@ static opr_ret_t network_interface_reset(struct blob_buf *bb, char *p, struct
 	if(0 == dmubus_call_set(cmd, "up", UBUS_ARGS{}, 0))
 		status &= true;
 
-	blobmsg_add_u32(bb, "status", status);
+	blobmsg_add_u8(bb, "status", status);
 	return SUCCESS;
 }
 
@@ -105,9 +105,9 @@ static opr_ret_t wireless_reset(struct blob_buf *bb, char *p, struct blob_attr
 	DEBUG("entry |%s| |%s|", p, bv->data);
 
 	if(0 == dmcmd_no_wait("/sbin/wifi", 2, "reload", "&"))
-		blobmsg_add_u32(bb, "status", 1);
+		blobmsg_add_u8(bb, "status", 1);
 	else
-		blobmsg_add_u32(bb, "status", 0);
+		blobmsg_add_u8(bb, "status", 0);
 	return SUCCESS;
 }
 
@@ -280,7 +280,7 @@ static opr_ret_t vendor_conf_backup(struct blob_buf *bb, char *path, struct
 		   VCF_FILE_TYPE, fserver.user, fserver.pass, vcf_name);
 	// TODO Add error handling
 
-	blobmsg_add_u32(bb, "status", 1);
+	blobmsg_add_u8(bb, "status", 1);
 	return SUCCESS;
 }
 
@@ -313,9 +313,9 @@ static opr_ret_t vendor_conf_restore(struct blob_buf *bb, char *path, struct
 
 	if (0 == dmcmd_no_wait("/bin/sh", 4, ICWMP_SCRIPT, "apply",
 			       "download", VCF_FILE_TYPE))
-		blobmsg_add_u32(bb, "status", 1);
+		blobmsg_add_u8(bb, "status", 1);
 	else
-		blobmsg_add_u32(bb, "status", 0);
+		blobmsg_add_u8(bb, "status", 0);
 
 	return SUCCESS;
 }
@@ -370,7 +370,7 @@ opr_ret_t create_operate_response(struct blob_buf *bb, char *cmd, struct
 		sprintf(tmp, "%s%s", p->ref_path, cmd);
 		switch(operate_on_node(bb, tmp, bv)) {
 			case CMD_NOT_FOUND:
-				blobmsg_add_u32(bb, "status", 0);
+				blobmsg_add_u8(bb, "status", 0);
 				blobmsg_add_string(bb, "error", "method not supported");
 				break;
 			case UBUS_INVALID_ARGUMENTS:

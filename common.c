@@ -3,7 +3,7 @@
  *
  * Copyright (C) 2019 iopsys Software Solutions AB. All rights reserved.
  *
- * Author: Vivek Dutta <v.dutta@gxgroup.eu>
+ * Author: Vivek Dutta <vivek.dutta@iopsys.eu>
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -89,7 +89,7 @@ bool top() {
 }
 
 // Common utilities
-bool is_str_eq(char *s1, char *s2) {
+bool is_str_eq(const char *s1, const char *s2) {
 	if(0==strcmp(s1, s2))
 		return true;
 
@@ -180,11 +180,24 @@ bool match(const char *string, const char *pattern) {
 
 void cwmp_init(struct dmctx *dm_ctx, char *path) {
 	int amd = AMD_2, instance = INSTANCE_MODE_ALIAS;
+
 	if(match(path, "[[]+")) {
 		if(!match(path, GLOB_EXPR)) {
 			amd = AMD_5;
 		}
+	} else {
+		char *uci_amd = NULL, *uci_instance = NULL;
+		if(get_uci_option_string("cwmp", "cpe", "amd_version", &uci_amd)) {
+			amd = atoi(uci_amd);
+			free(uci_amd);
+		}
+		if(get_uci_option_string("cwmp", "cpe", "instance_mode", &uci_instance)) {
+			if(!is_str_eq(uci_instance, "InstanceAlias"))
+				instance = INSTANCE_MODE_NUMBER;
+			free(uci_instance);
+		}
 	}
+	DEBUG("amd |%d| instance|%d|", amd, instance);
 	dm_ctx_init(dm_ctx, DM_CWMP, amd, instance);
 }
 
@@ -726,7 +739,7 @@ bool cwmp_set_value(struct blob_buf *bb, char *path, char *value) {
 		blobmsg_add_u32(bb, path, fault);
 	} else {
 		blobmsg_add_string(bb, "path", path);
-		blobmsg_add_u32(bb, "status", 1);
+		blobmsg_add_u8(bb, "status", 1);
 	}
 
 	blobmsg_close_table(bb, bb_array);

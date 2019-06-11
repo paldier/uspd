@@ -3,7 +3,7 @@
  *
  * Copyright (C) 2019 iopsys Software Solutions AB. All rights reserved.
  *
- * Author: Vivek Dutta <v.dutta@gxgroup.eu>
+ * Author: Vivek Dutta <vivek.dutta@iopsys.eu>
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License

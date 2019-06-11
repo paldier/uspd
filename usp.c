@@ -3,7 +3,7 @@
  *
  * Copyright (C) 2019 iopsys Software Solutions AB. All rights reserved.
  *
- * Author: Vivek Dutta <v.dutta@gxgroup.eu>
+ * Author: Vivek Dutta <vivek.dutta@iopsys.eu>
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -44,7 +44,7 @@ static int usp_get(struct ubus_context *ctx, struct ubus_object *obj,
 		struct ubus_request_data *req, const char *method,
 		struct blob_attr *msg)
 {
-	INFO("Entry method|%s| ubus name|%s|", method, obj->name);
+	DEBUG("Entry method|%s| ubus name|%s|", method, obj->name);
 	struct blob_attr *tb[__DM_MAX] = {NULL};
 	char path[PATH_MAX] = {'\0'};
 
@@ -109,13 +109,21 @@ int usp_set(struct ubus_context *ctx, struct ubus_object *obj,
 
 	filter_results(path, 0, strlen(path));
 
+	void *array = NULL;
+	if(is_str_eq(obj->name, RAWUSP)) {
+		array = blobmsg_open_array(&bb, "parameters");
+	}
+
 	if (tb[DM_SET_VALUE]) {
 		strcpy(value, blobmsg_data(tb[DM_SET_VALUE]));
 		create_set_response(&bb, value);
 	}
-
 	if(tb[DM_SET_VALUE_TABLE]) {
 		set_multiple_values(&bb, tb[DM_SET_VALUE_TABLE]);
+	}
+
+	if(is_str_eq(obj->name, RAWUSP)) {
+		blobmsg_close_array(&bb, array);
 	}
 	ubus_send_reply(ctx, req, bb.head);
 	blob_buf_free(&bb);
@@ -139,7 +147,7 @@ int usp_operate(struct ubus_context *ctx, struct ubus_object *obj,
 	struct blob_buf bb;
 	char path[PATH_MAX]={'\0'};
 	char cmd[NAME_MAX]={'\0'};
-	INFO("Entry method|%s| ubus name|%s|", method, obj->name);
+	DEBUG("Entry method|%s| ubus name|%s|", method, obj->name);
 
 	if(blobmsg_parse(dm_operate_policy, __DM_OPERATE_MAX, tb, blob_data(msg), blob_len(msg))) {
 		ERR("Failed to parse blob");

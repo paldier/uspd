@@ -30,13 +30,14 @@ char *cwmp_get_value_by_id(char *id);
 bool cwmp_set_value(struct blob_buf *bb, char *path, char *value);
 bool cwmp_get_value(char *path, bool fill, char *query_path);
 bool cwmp_get_name(char *path);
+bool cwmp_get_value_raw(char *path, struct blob_buf *bb);
 
 void filter_results(char *path, int start, int end);
 
 void deleteList();
 void printList(bool active);
 
-bool is_str_eq(char *s1, char *s2);
+bool is_str_eq(const char *s1, const char *s2);
 bool match(const char *string, const char *pattern);
 void prepare_result(struct blob_buf *bb);
 

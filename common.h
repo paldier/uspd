@@ -31,7 +31,9 @@ bool cwmp_set_value(struct blob_buf *bb, char *path, char *value);
 bool cwmp_get_value(char *path, bool fill, char *query_path);
 bool cwmp_get_name(char *path);
 bool cwmp_get_value_raw(char *path, struct blob_buf *bb);
+bool cwmp_get_granular_obj_list(char *path);
 
+void insert(char *data, bool active);
 void filter_results(char *path, int start, int end);
 
 void deleteList();
@@ -42,6 +44,8 @@ bool match(const char *string, const char *pattern);
 void prepare_result(struct blob_buf *bb);
 
 bool db_get_value(char *package, char *section, char *option, char **value);
+bool get_uci_option_string(char *package, char *section, char *option, char
+			  **value);
 
 #define DEBUG_ENABLED 0
 #define DEBUG(fmt, args...) \

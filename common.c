@@ -4,6 +4,7 @@
  * Copyright (C) 2019 iopsys Software Solutions AB. All rights reserved.
  *
  * Author: Vivek Dutta <vivek.dutta@iopsys.eu>
+ * Author: Yashvardhan <y.yashvardhan@iopsys.eu>
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -148,7 +149,8 @@ bool db_get_value(char *package, char *section, char *option, char **value)
 	return (ret);
 }
 
-int get_uci_option_string(char *package, char *section, char *option, char **value) {
+bool get_uci_option_string(char *package, char *section, char *option, char **value) {
+	struct uci_element *e;
 	struct uci_ptr ptr = {0};
 	bool ret = true;
 	usp_uci_init();
@@ -276,7 +278,6 @@ static void add_data_blob(struct blob_buf *bb, char *param, char *value, char *t
 //display the list
 void printList(bool active) {
 	pathnode *ptr;
-	DEBUG("Entry ");
 
 	if(active)
 		ptr = head;
@@ -354,7 +355,7 @@ static void rev_result() {
 }
 
 // Insert link at the first location
-static void insert(char *data, bool active) {
+void insert(char *data, bool active) {
 	DEBUG("Entry |%s| active|%d|", data, active);
 	//create a link
 	pathnode *link = (pathnode*) calloc(1, sizeof(pathnode));
@@ -420,6 +421,30 @@ static bool cwmp_get(int operation, char *path, struct dmctx *dm_ctx) {
 	}
 	return true;
 }
+
+bool cwmp_get_granular_obj_list(char *path) {
+	struct dmctx dm_ctx = {0};
+	struct dm_parameter *n;
+	bool ret = false;
+	char obj_path[MAXNAMLEN] = {'\0'};
+
+	cwmp_init(&dm_ctx, path);
+	if(cwmp_get(CMD_GET_NAME, path, &dm_ctx)) {
+		list_for_each_entry(n, &dm_ctx.list_parameter, list) {
+			strlcpy(obj_path, n->name, MAXNAMLEN);
+			// Get only datamodel objects and skip leaf
+			char *ret = strrchr(obj_path, '.');
+			if (*(ret+1) == '\0') {
+				DEBUG("get and insert |%s|", n->name);
+				insert(strdup(n->name), true);
+			}
+		}
+		ret = true;
+	}
+	cwmp_cleanup(&dm_ctx);
+	return(ret);
+}
+
 
 // return true ==> success
 // false ==> failure

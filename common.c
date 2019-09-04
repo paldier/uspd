@@ -30,7 +30,6 @@
 
 static bool is_node_instance(char *path);
 static bool is_leaf(char *path, char *);
-static void process_result(struct blob_buf *bb, unsigned int len);
 bool match(const char *string, const char *pattern);
 struct uci_context *uci_ctx = NULL;
 
@@ -300,7 +299,7 @@ static void swap_heads() {
 
 
 // Insert link at the first location
-static void insert_result(char *name, char *value, char *type) {
+void insert_result(char *name, char *value, char *type) {
 	DEBUG("Entry result|%s| value|%s|", name, value);
 	//create a link
 	resultnode *link = (resultnode*) calloc(1, sizeof(resultnode));
@@ -317,7 +316,7 @@ static void insert_result(char *name, char *value, char *type) {
 	rnode = link;
 }
 
-static void delete_result() {
+void delete_result() {
 	resultnode *ptr = rnode, *temp;
 	DEBUG("Entry");
 	if ( ptr == NULL) {
@@ -422,6 +421,19 @@ static bool cwmp_get(int operation, char *path, struct dmctx *dm_ctx) {
 	return true;
 }
 
+int cwmp_operate(struct dmctx *dm_ctx, char *path, char *input_params)
+{
+	int fault = 0;
+
+	if (input_params)
+		fault = dm_entry_param_method(dm_ctx, CMD_USP_OPERATE, path,
+					      input_params, NULL);
+	else
+		fault = dm_entry_param_method(dm_ctx, CMD_USP_OPERATE, path,
+					      NULL, NULL);
+	return fault;
+}
+
 bool cwmp_get_granular_obj_list(char *path) {
 	struct dmctx dm_ctx = {0};
 	struct dm_parameter *n;
@@ -512,7 +524,7 @@ static bool is_leaf(char *path, char *node) {
 	return (ret==NULL);
 }
 
-static void process_result(struct blob_buf *bb, unsigned int len) {
+void process_result(struct blob_buf *bb, unsigned int len) {
 	char pn[NAME_MAX]={'\0'};
 
 	if(rnode == NULL) {

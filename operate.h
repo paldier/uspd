@@ -7,7 +7,6 @@
 #define NETWORK_INTERFACE_UBUS_PATH "network.interface"
 #define NETWORK_WIRELESS_UBUS_PATH "network.wireless"
 #define ROUTER_WIRELESS_UBUS_PATH "router.wireless"
-#define ICWMP_SCRIPT "/usr/sbin/icwmp"
 #define VCF_FILE_TYPE "3"
 
 enum {

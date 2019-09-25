@@ -28,7 +28,7 @@ void create_response(struct blob_buf *bb, char *qpath) {
 	pathnode *p=head;
 	p = head;
 	while(p!=NULL) {
-		cwmp_get_value(p->ref_path, true, qpath);
+		bbf_get_value(p->ref_path, true, qpath);
 		p = p->next;
 	}
 	deleteList();
@@ -39,7 +39,7 @@ void create_raw_response(struct blob_buf *bb) {
 	pathnode *p=head;
 	void *array = blobmsg_open_array(bb, "parameters");
 	while(p!=NULL) {
-		cwmp_get_value_raw(p->ref_path, bb);
+		bbf_get_value_raw(p->ref_path, bb);
 		p = p->next;
 	}
 	blobmsg_close_array(bb, array);

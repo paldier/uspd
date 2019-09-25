@@ -28,7 +28,7 @@ extern pathnode *head;
 void create_set_response(struct blob_buf *bb, char *value) {
 	pathnode *p=head;
 	while(p!=NULL) {
-		cwmp_set_value(bb, p->ref_path, value);
+		bbf_set_value(bb, p->ref_path, value);
 		p=p->next;
 	}
 	deleteList();
@@ -69,7 +69,7 @@ void set_multiple_values(struct blob_buf *bb, struct blob_attr *blob_value) {
 					break;
 			}
 
-			cwmp_set_value(bb, path, value);
+			bbf_set_value(bb, path, value);
 			p=p->next;
 		}
 	}

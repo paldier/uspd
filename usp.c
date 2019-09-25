@@ -67,8 +67,8 @@ static int usp_get(struct ubus_context *ctx, struct ubus_object *obj,
 
 		char *ret = strchr(obj->name, '.');
 		strcpy(path, ret+1);
-		snprintf(path + strlen(path), NAME_MAX - strlen(path), "%s%s",
-			 ".", blobmsg_data(tb[DMPATH_NAME]));
+		snprintf(path + strlen(path), NAME_MAX - strlen(path), ".%s",
+			 (char *)blobmsg_data(tb[DMPATH_NAME]));
 	} else {
 		strcpy(path, blobmsg_data(tb[DMPATH_NAME]));
 	}
@@ -122,8 +122,8 @@ int usp_set(struct ubus_context *ctx, struct ubus_object *obj,
 
 		char *ret = strchr(obj->name, '.');
 		strcpy(path, ret+1);
-		snprintf(path + strlen(path), NAME_MAX - strlen(path), "%s%s",
-			 ".", blobmsg_data(tb[DM_SET_PATH]));
+		snprintf(path + strlen(path), NAME_MAX - strlen(path), ".%s",
+			 (char *)blobmsg_data(tb[DM_SET_PATH]));
 	} else {
 		strcpy(path, blobmsg_data(tb[DM_SET_PATH]));
 	}
@@ -189,8 +189,8 @@ int usp_operate(struct ubus_context *ctx, struct ubus_object *obj,
 
 		char *ret = strchr(obj->name, '.');
 		strcpy(path, ret+1);
-		snprintf(path + strlen(path), NAME_MAX - strlen(path), "%s%s",
-			 ".", blobmsg_data(tb[DM_OPERATE_PATH]));
+		snprintf(path + strlen(path), NAME_MAX - strlen(path), ".%s",
+			 (char *)blobmsg_data(tb[DM_OPERATE_PATH]));
 	} else {
 		strcpy(path, blobmsg_data(tb[DM_OPERATE_PATH]));
 	}
@@ -262,15 +262,15 @@ static void add_granular_objects(struct ubus_context *ctx, int gn_level)
 		insert(strdup("Device"), true);
 		break;
 	case 2:
-		cwmp_get_granular_obj_list("Device.");
+		get_granular_obj_list("Device.");
 		insert(strdup("Device"), true);
 		break;
 	default:
-		cwmp_get_granular_obj_list("Device.");
+		get_granular_obj_list("Device.");
 		for (int i = 2; i < gn_level; i++) {
 			p = head;
 			while(p!=NULL) {
-				cwmp_get_granular_obj_list(p->ref_path);
+				get_granular_obj_list(p->ref_path);
 				p=p->next;
 			}
 		}

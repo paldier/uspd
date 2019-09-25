@@ -149,7 +149,6 @@ bool db_get_value(char *package, char *section, char *option, char **value)
 }
 
 bool get_uci_option_string(char *package, char *section, char *option, char **value) {
-	struct uci_element *e;
 	struct uci_ptr ptr = {0};
 	bool ret = true;
 	usp_uci_init();
@@ -179,7 +178,7 @@ bool match(const char *string, const char *pattern) {
 	return true;
 }
 
-void cwmp_init(struct dmctx *dm_ctx, char *path) {
+void bbf_init(struct dmctx *dm_ctx, char *path) {
 	int amd = AMD_2, instance = INSTANCE_MODE_ALIAS;
 
 	if(match(path, "[[]+")) {
@@ -202,7 +201,7 @@ void cwmp_init(struct dmctx *dm_ctx, char *path) {
 	dm_ctx_init(dm_ctx, DM_CWMP, amd, instance);
 }
 
-void cwmp_cleanup(struct dmctx *dm_ctx) {
+void bbf_cleanup(struct dmctx *dm_ctx) {
 	dm_ctx_clean(dm_ctx);
 }
 
@@ -396,7 +395,7 @@ void deleteList() {
 	swap_heads();
 }
 
-static bool cwmp_get(int operation, char *path, struct dmctx *dm_ctx) {
+static bool bbf_get(int operation, char *path, struct dmctx *dm_ctx) {
 	int fault = 0;
 
 	DEBUG("Entry |%s| operation|%d|", path, operation);
@@ -421,7 +420,7 @@ static bool cwmp_get(int operation, char *path, struct dmctx *dm_ctx) {
 	return true;
 }
 
-int cwmp_operate(struct dmctx *dm_ctx, char *path, char *input_params)
+int bbf_operate(struct dmctx *dm_ctx, char *path, char *input_params)
 {
 	int fault = 0;
 
@@ -434,14 +433,14 @@ int cwmp_operate(struct dmctx *dm_ctx, char *path, char *input_params)
 	return fault;
 }
 
-bool cwmp_get_granular_obj_list(char *path) {
+bool get_granular_obj_list(char *path) {
 	struct dmctx dm_ctx = {0};
 	struct dm_parameter *n;
 	bool ret = false;
 	char obj_path[MAXNAMLEN] = {'\0'};
 
-	cwmp_init(&dm_ctx, path);
-	if(cwmp_get(CMD_GET_NAME, path, &dm_ctx)) {
+	bbf_init(&dm_ctx, path);
+	if(bbf_get(CMD_GET_NAME, path, &dm_ctx)) {
 		list_for_each_entry(n, &dm_ctx.list_parameter, list) {
 			strlcpy(obj_path, n->name, MAXNAMLEN);
 			// Get only datamodel objects and skip leaf
@@ -453,45 +452,45 @@ bool cwmp_get_granular_obj_list(char *path) {
 		}
 		ret = true;
 	}
-	cwmp_cleanup(&dm_ctx);
+	bbf_cleanup(&dm_ctx);
 	return(ret);
 }
 
 
 // return true ==> success
 // false ==> failure
-bool cwmp_get_name(char *path) {
+bool bbf_get_name(char *path) {
 	struct dmctx dm_ctx = {0};
 	struct dm_parameter *n;
 	bool ret = false;
 
-	cwmp_init(&dm_ctx, path);
-	if(cwmp_get(CMD_GET_NAME, path, &dm_ctx)) {
+	bbf_init(&dm_ctx, path);
+	if(bbf_get(CMD_GET_NAME, path, &dm_ctx)) {
 		list_for_each_entry(n, &dm_ctx.list_parameter, list) {
 			DEBUG("get and insert |%s|", n->name);
 			insert(strdup(n->name), false);
 		}
 		ret = true;
 	}
-	cwmp_cleanup(&dm_ctx);
+	bbf_cleanup(&dm_ctx);
 	return(ret);
 }
 
-char *cwmp_get_value_by_id(char *id) {
+char *bbf_get_value_by_id(char *id) {
 	struct dmctx dm_ctx = {0};
 	struct dm_parameter *n;
 	char *value = NULL;
 
 	DEBUG("Entry id |%s|", id);
-	cwmp_init(&dm_ctx, id);
-	if(cwmp_get(CMD_GET_VALUE, id, &dm_ctx)) {
+	bbf_init(&dm_ctx, id);
+	if(bbf_get(CMD_GET_VALUE, id, &dm_ctx)) {
 			list_for_each_entry(n, &dm_ctx.list_parameter, list) {
 				DEBUG("value |%s|", n->name);
 				value = strdup(n->data); // mem will be freed on caller
 				break;
 			}
 	}
-	cwmp_cleanup(&dm_ctx);
+	bbf_cleanup(&dm_ctx);
 	return (value);
 }
 
@@ -662,14 +661,14 @@ bool is_search_by_reference(char *path) {
 	return ((last_plus-last_bracket)>0?true:false);
 }
 
-bool cwmp_get_value(char *path, bool fill, char *query_path) {
+bool bbf_get_value(char *path, bool fill, char *query_path) {
 	struct dmctx dm_ctx = {0};
 	struct dm_parameter *n;
 	int plen = get_glob_len(query_path);
 	DEBUG("Entry path |%s|, fill|%d|, query_path|%s|, plen|%d|", path, fill, query_path, plen);
 
-	cwmp_init(&dm_ctx, path);
-	if(cwmp_get(CMD_GET_VALUE, path, &dm_ctx)) {
+	bbf_init(&dm_ctx, path);
+	if(bbf_get(CMD_GET_VALUE, path, &dm_ctx)) {
 		if(fill) {
 			list_for_each_entry(n, &dm_ctx.list_parameter, list) {
 				if(is_search_by_reference(query_path)) {
@@ -681,17 +680,17 @@ bool cwmp_get_value(char *path, bool fill, char *query_path) {
 			}
 		}
 	}
-	cwmp_cleanup(&dm_ctx);
+	bbf_cleanup(&dm_ctx);
 	return true;
 }
 
-bool cwmp_get_value_raw(char *path, struct blob_buf *bb) {
+bool bbf_get_value_raw(char *path, struct blob_buf *bb) {
 	struct dmctx dm_ctx = {0};
 	struct dm_parameter *n;
 	DEBUG("Entry path |%s|", path);
 
-	cwmp_init(&dm_ctx, path);
-	if(cwmp_get(CMD_GET_VALUE, path, &dm_ctx)) {
+	bbf_init(&dm_ctx, path);
+	if(bbf_get(CMD_GET_VALUE, path, &dm_ctx)) {
 		list_for_each_entry(n, &dm_ctx.list_parameter, list) {
 			void *table = blobmsg_open_table(bb, NULL);
 			blobmsg_add_string(bb, "parameter", n->name);
@@ -700,7 +699,7 @@ bool cwmp_get_value_raw(char *path, struct blob_buf *bb) {
 			blobmsg_close_table(bb, table);
 		}
 	}
-	cwmp_cleanup(&dm_ctx);
+	bbf_cleanup(&dm_ctx);
 	return true;
 }
 void prepare_result(struct blob_buf *bb) {
@@ -716,13 +715,13 @@ void prepare_result(struct blob_buf *bb) {
 	delete_result();
 }
 
-static bool cwmp_get_name_exp(char *path, char *operator, char *operand) {
+static bool bbf_get_name_exp(char *path, char *operator, char *operand) {
 	struct dmctx dm_ctx = {0};
 	struct dm_parameter *n;
 	bool ret = false;
 
-	cwmp_init(&dm_ctx, path);
-	if(cwmp_get(CMD_GET_VALUE, path, &dm_ctx)) {
+	bbf_init(&dm_ctx, path);
+	if(bbf_get(CMD_GET_VALUE, path, &dm_ctx)) {
 		list_for_each_entry(n, &dm_ctx.list_parameter, list) {
 			DEBUG("Get |%s| value|%s| operator|%s|", path, n->data, operator);
 			int n1=0, n2=0;
@@ -746,17 +745,17 @@ static bool cwmp_get_name_exp(char *path, char *operator, char *operand) {
 			}
 		}
 	}
-	cwmp_cleanup(&dm_ctx);
+	bbf_cleanup(&dm_ctx);
 	return(ret);
 }
 
-bool cwmp_set_value(struct blob_buf *bb, char *path, char *value) {
+bool bbf_set_value(struct blob_buf *bb, char *path, char *value) {
 	int fault = 0;
 	struct dmctx dm_ctx = {0};
 	struct dmctx *p_dmctx = &dm_ctx;
 	void *bb_array = blobmsg_open_table(bb, NULL);
 
-	cwmp_init(&dm_ctx, path);
+	bbf_init(&dm_ctx, path);
 	DEBUG("Entry path|%s|, value|%s|", path, value);
 	fault = dm_entry_param_method(&dm_ctx, CMD_SET_VALUE, path, value, NULL);
 
@@ -780,7 +779,7 @@ bool cwmp_set_value(struct blob_buf *bb, char *path, char *value) {
 	}
 
 	blobmsg_close_table(bb, bb_array);
-	cwmp_cleanup(&dm_ctx);
+	bbf_cleanup(&dm_ctx);
 	return true;
 }
 
@@ -793,13 +792,13 @@ static void dereference_path(char *ref, char *l_op, char *r_op, char *op) {
 		char *node = NULL;
 		strcpy(path,p->ref_path);
 		strcat(path, ref);
-		node = cwmp_get_value_by_id(path);
+		node = bbf_get_value_by_id(path);
 		strcpy(ref_path, node);
 		strcat(ref_path, l_op);
 		DEBUG("de ref|%s|, path|%s|, node|%s|", ref_path, path, node);
 		free(node);
 
-		if(cwmp_get_name_exp(ref_path, op, r_op)) {
+		if(bbf_get_name_exp(ref_path, op, r_op)) {
 			insert(strdup(p->ref_path), false);
 		}
 		p=p->next;
@@ -864,7 +863,7 @@ static void solve(char *exp) {
 			char name[NAME_MAX]={'\0'};
 			strcpy(name, p->ref_path);
 			strcat(name, token);
-			if(cwmp_get_name_exp(name, operator, operand)){
+			if(bbf_get_name_exp(name, operator, operand)){
 				insert(strdup(p->ref_path), false);
 			}
 			p=p->next;
@@ -876,7 +875,7 @@ static void solve(char *exp) {
 static void fill_node_path() {
 	pathnode *p=head;
 	while(p!=NULL) {
-		cwmp_get_name(p->ref_path);
+		bbf_get_name(p->ref_path);
 		p=p->next;
 	}
 	deleteList();
@@ -931,7 +930,7 @@ static int expand_expression(char *path, char *exp) {
 			while(p!=NULL) {
 				char *token = NULL;
 				sprintf(path,"%s%s", p->ref_path, name);
-				node = cwmp_get_value_by_id(path);
+				node = bbf_get_value_by_id(path);
 				int node_count = 1;
 				while ((token = strtok_r(node, ",", &node))) {
 					if(node_count == ref_number)

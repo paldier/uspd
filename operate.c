@@ -40,14 +40,14 @@ opr_ret_t create_operate_response(struct blob_buf *bb, char *cmd, struct blob_at
 		struct dm_parameter *n;
 		char tmp[NAME_MAX] = {'\0'};
 		sprintf(tmp, "%s%s", p->ref_path, cmd);
-		cwmp_init(&dm_ctx, tmp);
+		bbf_init(&dm_ctx, tmp);
 
 		if(bv) {
 			input_params = blobmsg_format_json(bv, true);
-			fault = cwmp_operate(&dm_ctx, tmp, input_params);
+			fault = bbf_operate(&dm_ctx, tmp, input_params);
 			free(input_params);
 		} else {
-			fault = cwmp_operate(&dm_ctx, tmp, NULL);
+			fault = bbf_operate(&dm_ctx, tmp, NULL);
 		}
 
 		switch(fault) {
@@ -57,7 +57,7 @@ opr_ret_t create_operate_response(struct blob_buf *bb, char *cmd, struct blob_at
 				break;
 			case UBUS_INVALID_ARGUMENTS:
 				deleteList();
-				cwmp_cleanup(&dm_ctx);
+				bbf_cleanup(&dm_ctx);
 				return(UBUS_INVALID_ARGUMENTS);
 			case SUCCESS:
 				list_for_each_entry(n, &dm_ctx.list_parameter, list) {
@@ -74,7 +74,7 @@ opr_ret_t create_operate_response(struct blob_buf *bb, char *cmd, struct blob_at
 			default:
 				ERR("Case not defined");
 		}
-		cwmp_cleanup(&dm_ctx);
+		bbf_cleanup(&dm_ctx);
 		p=p->next;
 	}
 	deleteList();

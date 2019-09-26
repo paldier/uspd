@@ -23,38 +23,12 @@
 #include "common.h"
 
 // Dummy function definations for libdatamodel binding
-void puts_log(int severity, const char *fmt, ...) {
-	DEBUG("Dummy funtion");
-	if(severity && fmt){}
-}
 void add_list_value_change(char *param_name, char *param_data, char *param_type) {
-	DEBUG("Dummy funtion");
+	INFO("Dummy funtion");
 	if(param_name && param_data && param_type){}
 }
 
 void send_active_value_change(void){
-	DEBUG("Dummy funtion");
-}
-
-int copy_temporary_file_to_original_file(char *f1, char *f2) {
-	FILE *fp, *ftmp;
-	char ch;
-
-	ftmp = fopen(f2, "r");
-	if (ftmp == NULL)
-		return 0;
-
-	fp = fopen(f1, "w");
-	if (fp == NULL) {
-		fclose(ftmp);
-		return 0;
-	}
-
-	while( ( ch = fgetc(ftmp) ) != EOF )
-		fputc(ch, fp);
-
-	fclose(ftmp);
-	fclose(fp);
-	return 1;
+	INFO("Dummy funtion");
 }
 

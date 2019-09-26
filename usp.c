@@ -35,8 +35,24 @@
 #include "common.h"
 
 #define USP "usp"
+#define USP_GRA "usp."
 #define RAWUSP "usp.raw"
 extern pathnode *head;
+
+static bool is_sanitized(char *param)
+{
+	if (param==NULL)
+		return false;
+
+	size_t len = strlen(param);
+	if (param[0]=='\0' || param[0]==' ' || len<1)
+		return false;
+
+	if (param[len-1]==' ')
+		return false;
+
+	return true;
+}
 
 static const struct blobmsg_policy dm_get_policy[__DM_MAX] = {
 	[DMPATH_NAME] = { .name = "path", .type = BLOBMSG_TYPE_STRING }
@@ -58,22 +74,22 @@ static int usp_get(struct ubus_context *ctx, struct ubus_object *obj,
 	if (!(tb[DMPATH_NAME]))
 		return UBUS_STATUS_INVALID_ARGUMENT;
 
+	if (!is_sanitized(blobmsg_data(tb[DMPATH_NAME]))) {
+		ERR("Invalid option |%s|", (char *)blobmsg_data(tb[DMPATH_NAME]));
+		return UBUS_STATUS_INVALID_ARGUMENT;
+	}
+
 	struct blob_buf bb;
 	memset(&bb,0,sizeof(struct blob_buf));
 	blob_buf_init(&bb, 0);
 
 	// In case of granular objects, Concatenate relative path to ubus object
 	if ((0 != strcmp(obj->name, USP)) && (0 != strcmp(obj->name, RAWUSP))) {
-
-		char *ret = strchr(obj->name, '.');
-		strcpy(path, ret+1);
-		snprintf(path + strlen(path), NAME_MAX - strlen(path), ".%s",
-			 (char *)blobmsg_data(tb[DMPATH_NAME]));
+		snprintf(path, NAME_MAX, "%s.%s", obj->name+strlen(USP_GRA), \
+			(char *)blobmsg_data(tb[DMPATH_NAME]));
 	} else {
 		strcpy(path, blobmsg_data(tb[DMPATH_NAME]));
 	}
-
-	DEBUG("Path |%s|",path);
 
 	filter_results(path, 0, strlen(path));
 	if(is_str_eq(obj->name, RAWUSP)) {
@@ -112,6 +128,11 @@ int usp_set(struct ubus_context *ctx, struct ubus_object *obj,
 	if (!tb[DM_SET_VALUE] && !tb[DM_SET_VALUE_TABLE])
 		return UBUS_STATUS_INVALID_ARGUMENT;
 
+	if (!is_sanitized(blobmsg_data(tb[DM_SET_PATH]))) {
+		ERR("Invalid option |%s|", (char *)blobmsg_data(tb[DM_SET_PATH]));
+		return UBUS_STATUS_INVALID_ARGUMENT;
+	}
+
 	struct blob_buf bb;
 	memset(&bb,0,sizeof(struct blob_buf));
 
@@ -119,10 +140,7 @@ int usp_set(struct ubus_context *ctx, struct ubus_object *obj,
 
 	// In case of granular objects, Concatenate relative path to ubus object
 	if ((0 != strcmp(obj->name, USP)) && (0 != strcmp(obj->name, RAWUSP))) {
-
-		char *ret = strchr(obj->name, '.');
-		strcpy(path, ret+1);
-		snprintf(path + strlen(path), NAME_MAX - strlen(path), ".%s",
+		snprintf(path, NAME_MAX, "%s.%s", obj->name+strlen(USP_GRA), \
 			 (char *)blobmsg_data(tb[DM_SET_PATH]));
 	} else {
 		strcpy(path, blobmsg_data(tb[DM_SET_PATH]));
@@ -181,15 +199,17 @@ int usp_operate(struct ubus_context *ctx, struct ubus_object *obj,
 	if (!(tb[DM_OPERATE_ACTION]))
 		return UBUS_STATUS_INVALID_ARGUMENT;
 
+	if (!is_sanitized(blobmsg_data(tb[DM_OPERATE_PATH]))) {
+		ERR("Invalid option |%s|", (char *)blobmsg_data(tb[DM_OPERATE_PATH]));
+		return UBUS_STATUS_INVALID_ARGUMENT;
+	}
+
 	memset(&bb, 0, sizeof(struct blob_buf));
 	blob_buf_init(&bb, 0);
 
 	// In case of granular objects, Concatenate relative path to ubus object
 	if ((0 != strcmp(obj->name, USP)) && (0 != strcmp(obj->name, RAWUSP))) {
-
-		char *ret = strchr(obj->name, '.');
-		strcpy(path, ret+1);
-		snprintf(path + strlen(path), NAME_MAX - strlen(path), ".%s",
+		snprintf(path, NAME_MAX, "%s.%s", obj->name+strlen(USP_GRA), \
 			 (char *)blobmsg_data(tb[DM_OPERATE_PATH]));
 	} else {
 		strcpy(path, blobmsg_data(tb[DM_OPERATE_PATH]));
@@ -230,14 +250,15 @@ static struct ubus_object usp_raw_object = {
 	.n_methods = ARRAY_SIZE(usp_methods),
 };
 
-static void ubus_add_granular_objects(struct ubus_context *ctx, char *obj_path)
+static void ubus_add_granular_objects(struct ubus_context *ctx, char *obj)
 {
 	int retval;
+	char *obj_name = strdup(obj);
 	struct ubus_object *usp_granular_object = (struct ubus_object*)
 			malloc(sizeof(struct ubus_object));
 
 	struct ubus_object granular_object = {
-		.name = obj_path,
+		.name = obj_name,
 		.type = &usp_type,
 		.methods = usp_methods,
 		.n_methods = ARRAY_SIZE(usp_methods)};
@@ -246,52 +267,36 @@ static void ubus_add_granular_objects(struct ubus_context *ctx, char *obj_path)
 
 	retval = ubus_add_object(ctx, usp_granular_object);
 	if (retval)
-		ERR("Failed to add 'usp' ubus object: %s\n",
-		    ubus_strerror(retval));
+		ERR("Failed to add 'usp' ubus object: %s\n", ubus_strerror(retval));
+
 }
 
 static void add_granular_objects(struct ubus_context *ctx, int gn_level)
 {
 	pathnode *p=head;
 
-	switch (gn_level) {
-	case 0:
-		INFO("Granularity level is set to zero. No more 'usp' ubus objects to add");
+	if (gn_level == 0) {
+		DEBUG("Granularity level is set to zero. No more 'usp' ubus objects to add");
 		return;
-	case 1: // add usp.Device
-		insert(strdup("Device"), true);
-		break;
-	case 2:
-		get_granular_obj_list("Device.");
-		insert(strdup("Device"), true);
-		break;
-	default:
-		get_granular_obj_list("Device.");
-		for (int i = 2; i < gn_level; i++) {
-			p = head;
-			while(p!=NULL) {
-				get_granular_obj_list(p->ref_path);
-				p=p->next;
-			}
+	}
+
+	insert(strdup("Device."), true);
+	for (int i = 2; i <= gn_level; i++) {
+		p = head;
+		while(p!=NULL) {
+			get_granular_obj_list(p->ref_path);
+			p=p->next;
 		}
-		insert(strdup("Device"), true);
-		break;
 	}
 	p = head;
 	while(p!=NULL) {
-		char *obj_path = (char*) malloc(MAXNAMLEN * sizeof(char));
+		char obj_path[MAXNAMLEN]=USP_GRA;
+		strcat(obj_path,p->ref_path);
 
-		if (0 == strcmp(p->ref_path, "Device")) {
-			strlcpy(obj_path, p->ref_path, MAXNAMLEN);
-		} else { // trim last (.) from the ubus object path
-			char *ret = strrchr(p->ref_path, '.');
-			strlcpy(obj_path, p->ref_path, (ret - p->ref_path) +1);
-		}
-		// Add "usp." in front of the object before registering it on
-		// ubus
-		char *temp = strdup(obj_path);
-		strlcpy(obj_path, "usp.", MAXNAMLEN);
-		strcat(obj_path, temp);
+		size_t len = strlen(obj_path);
+		if (obj_path[len-1]=='.')
+			obj_path[len-1]='\0';
+
 		DEBUG("ubus objects to register |%s|", obj_path);
 		ubus_add_granular_objects(ctx, obj_path);
 		p=p->next;

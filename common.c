@@ -437,16 +437,13 @@ bool get_granular_obj_list(char *path) {
 	struct dmctx dm_ctx = {0};
 	struct dm_parameter *n;
 	bool ret = false;
-	char obj_path[MAXNAMLEN] = {'\0'};
 
 	bbf_init(&dm_ctx, path);
 	if(bbf_get(CMD_GET_NAME, path, &dm_ctx)) {
 		list_for_each_entry(n, &dm_ctx.list_parameter, list) {
-			strlcpy(obj_path, n->name, MAXNAMLEN);
-			// Get only datamodel objects and skip leaf
-			char *ret = strrchr(obj_path, '.');
-			if (*(ret+1) == '\0') {
-				DEBUG("get and insert |%s|", n->name);
+			size_t len = strlen(n->name);
+			// Get only datamodel objects and skip leafs
+			if (n->name[len-1] == '.') {
 				insert(strdup(n->name), true);
 			}
 		}
@@ -455,7 +452,6 @@ bool get_granular_obj_list(char *path) {
 	bbf_cleanup(&dm_ctx);
 	return(ret);
 }
-
 
 // return true ==> success
 // false ==> failure
@@ -467,7 +463,6 @@ bool bbf_get_name(char *path) {
 	bbf_init(&dm_ctx, path);
 	if(bbf_get(CMD_GET_NAME, path, &dm_ctx)) {
 		list_for_each_entry(n, &dm_ctx.list_parameter, list) {
-			DEBUG("get and insert |%s|", n->name);
 			insert(strdup(n->name), false);
 		}
 		ret = true;

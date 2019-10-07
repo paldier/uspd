@@ -25,7 +25,6 @@
 
 #define GLOB_CHAR "[[+*]+"
 #define GLOB_EXPR "[=><]+"
-#define DELIM '.'
 #define RESULT_STACK 15
 
 static bool is_node_instance(char *path);
@@ -443,7 +442,7 @@ bool get_granular_obj_list(char *path) {
 		list_for_each_entry(n, &dm_ctx.list_parameter, list) {
 			size_t len = strlen(n->name);
 			// Get only datamodel objects and skip leafs
-			if (n->name[len-1] == '.') {
+			if (n->name[len-1] == DELIM) {
 				insert(strdup(n->name), true);
 			}
 		}
@@ -627,6 +626,9 @@ static int get_glob_len(char *path) {
 			strncpy(name, path, plen );
 		}
 		char *end = strrchr(name, DELIM);
+		if(end == NULL)
+			return ret;
+
 		ret = ret + strlen(path) - strlen(end);
 		if(is_node_instance(end+1)) {
 			char temp_name[NAME_MAX] = {'\0'};
@@ -659,9 +661,10 @@ bool is_search_by_reference(char *path) {
 bool bbf_get_value(char *path, bool fill, char *query_path) {
 	struct dmctx dm_ctx = {0};
 	struct dm_parameter *n;
+	DEBUG("Entry path |%s|, fill|%d|, query_path|%s|", path, fill, query_path);
 	int plen = get_glob_len(query_path);
-	DEBUG("Entry path |%s|, fill|%d|, query_path|%s|, plen|%d|", path, fill, query_path, plen);
 
+	DEBUG("plen|%d|", plen);
 	bbf_init(&dm_ctx, path);
 	if(bbf_get(CMD_GET_VALUE, path, &dm_ctx)) {
 		if(fill) {
@@ -692,6 +695,7 @@ bool bbf_get_value_raw(char *path, struct blob_buf *bb) {
 			blobmsg_add_string(bb, "value", n->data);
 			blobmsg_add_string(bb, "type", n->type);
 			blobmsg_close_table(bb, table);
+			DEBUG("param|%s|, value|%s|", n->name, n->data);
 		}
 	}
 	bbf_cleanup(&dm_ctx);
@@ -746,6 +750,7 @@ static bool bbf_get_name_exp(char *path, char *operator, char *operand) {
 
 bool bbf_set_value(struct blob_buf *bb, char *path, char *value) {
 	int fault = 0;
+	bool ret = true;
 	struct dmctx dm_ctx = {0};
 	struct dmctx *p_dmctx = &dm_ctx;
 	void *bb_array = blobmsg_open_table(bb, NULL);
@@ -763,19 +768,20 @@ bool bbf_set_value(struct blob_buf *bb, char *path, char *value) {
 		list_for_each_entry(p, &p_dmctx->list_fault_param, list) {
 			blobmsg_add_u32(bb, p->name, p->fault);
 		}
-		return false;
+		ret = false;
 	}
 
 	if (fault) {
+		blobmsg_add_u8(bb, "status", false);
 		blobmsg_add_u32(bb, path, fault);
 	} else {
+		blobmsg_add_u8(bb, "status", true);
 		blobmsg_add_string(bb, "path", path);
-		blobmsg_add_u8(bb, "status", 1);
 	}
 
 	blobmsg_close_table(bb, bb_array);
 	bbf_cleanup(&dm_ctx);
-	return true;
+	return ret;
 }
 
 static void dereference_path(char *ref, char *l_op, char *r_op, char *op) {

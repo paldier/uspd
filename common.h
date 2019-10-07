@@ -17,6 +17,7 @@
 #include <libbbfdm/dmentry.h>
 
 #define STRING_DEFAULT 256
+#define DELIM '.'
 
 typedef struct pathnode {
 	char *ref_path;

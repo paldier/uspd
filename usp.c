@@ -33,6 +33,7 @@
 #include "get.h"
 #include "operate.h"
 #include "common.h"
+#include "add_delete.h"
 
 #define USP "usp"
 #define USP_GRA "usp."
@@ -96,6 +97,106 @@ static int usp_get(struct ubus_context *ctx, struct ubus_object *obj,
 		create_raw_response(&bb);
 	} else {
 		create_response(&bb, path);
+	}
+
+	ubus_send_reply(ctx, req, bb.head);
+	blob_buf_free(&bb);
+
+	return 0;
+}
+
+static int usp_add(struct ubus_context *ctx, struct ubus_object *obj,
+		struct ubus_request_data *req, const char *method,
+		struct blob_attr *msg)
+{
+	DEBUG("Entry method|%s| ubus name|%s|", method, obj->name);
+	struct blob_attr *tb[__DM_MAX] = {NULL};
+	char path[PATH_MAX] = {'\0'};
+
+	if(blobmsg_parse(dm_get_policy, __DM_MAX, tb, blob_data(msg), blob_len(msg))) {
+		ERR("Failed to parse blob");
+		return UBUS_STATUS_UNKNOWN_ERROR;
+	}
+
+	if (!(tb[DMPATH_NAME]))
+		return UBUS_STATUS_INVALID_ARGUMENT;
+
+	if (!is_sanitized(blobmsg_data(tb[DMPATH_NAME]))) {
+		ERR("Invalid option |%s|", (char *)blobmsg_data(tb[DMPATH_NAME]));
+		return UBUS_STATUS_INVALID_ARGUMENT;
+	}
+
+	struct blob_buf bb;
+	memset(&bb,0,sizeof(struct blob_buf));
+	blob_buf_init(&bb, 0);
+
+	// In case of granular objects, Concatenate relative path to ubus object
+	if ((0 != strcmp(obj->name, USP)) && (0 != strcmp(obj->name, RAWUSP))) {
+		snprintf(path, NAME_MAX, "%s.%s", obj->name+strlen(USP_GRA), \
+			(char *)blobmsg_data(tb[DMPATH_NAME]));
+	} else {
+		strcpy(path, blobmsg_data(tb[DMPATH_NAME]));
+	}
+	size_t path_len = strlen(path);
+	// Path is invalid if the path have leave elements
+	// Need to add . as obuspa trims last . from path
+	if(path[path_len-1] != DELIM) {
+		strcat(path, ".");
+	}
+
+	add_object(&bb, path);
+
+	ubus_send_reply(ctx, req, bb.head);
+	blob_buf_free(&bb);
+
+	return 0;
+}
+
+static int usp_del(struct ubus_context *ctx, struct ubus_object *obj,
+		struct ubus_request_data *req, const char *method,
+		struct blob_attr *msg)
+{
+	DEBUG("Entry method|%s| ubus name|%s|", method, obj->name);
+	struct blob_attr *tb[__DM_MAX] = {NULL};
+	char path[PATH_MAX] = {'\0'};
+
+	if(blobmsg_parse(dm_get_policy, __DM_MAX, tb, blob_data(msg), blob_len(msg))) {
+		ERR("Failed to parse blob");
+		return UBUS_STATUS_UNKNOWN_ERROR;
+	}
+
+	if (!(tb[DMPATH_NAME]))
+		return UBUS_STATUS_INVALID_ARGUMENT;
+
+	if (!is_sanitized(blobmsg_data(tb[DMPATH_NAME]))) {
+		ERR("Invalid option |%s|", (char *)blobmsg_data(tb[DMPATH_NAME]));
+		return UBUS_STATUS_INVALID_ARGUMENT;
+	}
+
+	struct blob_buf bb;
+	memset(&bb,0,sizeof(struct blob_buf));
+	blob_buf_init(&bb, 0);
+
+	// In case of granular objects, Concatenate relative path to ubus object
+	if ((0 != strcmp(obj->name, USP)) && (0 != strcmp(obj->name, RAWUSP))) {
+		snprintf(path, NAME_MAX, "%s.%s", obj->name+strlen(USP_GRA), \
+			(char *)blobmsg_data(tb[DMPATH_NAME]));
+	} else {
+		strcpy(path, blobmsg_data(tb[DMPATH_NAME]));
+	}
+
+	size_t path_len = strlen(path);
+	// Path is invalid if the path have leave elements
+	// Need to add . as obuspa trims last . from path
+	if(path[path_len-1] != DELIM) {
+		strcat(path, ".");
+	}
+
+	filter_results(path, 0, strlen(path));
+	pathnode *p=head;
+	while(p) {
+		del_object(&bb, p->ref_path);
+		p = p->next;
 	}
 
 	ubus_send_reply(ctx, req, bb.head);
@@ -219,8 +320,10 @@ int usp_operate(struct ubus_context *ctx, struct ubus_object *obj,
 
 	filter_results(path, 0, strlen(path));
 
-	if(UBUS_INVALID_ARGUMENTS == create_operate_response(&bb, cmd, tb[DM_OPERATE_INPUT]))
+	if(UBUS_INVALID_ARGUMENTS == create_operate_response(&bb, cmd, tb[DM_OPERATE_INPUT])) {
+		blob_buf_free(&bb);
 		return UBUS_STATUS_INVALID_ARGUMENT;
+	}
 
 	ubus_send_reply(ctx, req, bb.head);
 	blob_buf_free(&bb);
@@ -232,6 +335,8 @@ static struct ubus_method usp_methods[] = {
 	UBUS_METHOD("get", usp_get, dm_get_policy),
 	UBUS_METHOD("set", usp_set, dm_set_policy),
 	UBUS_METHOD("operate", usp_operate, dm_operate_policy),
+	UBUS_METHOD("add_object", usp_add, dm_get_policy),
+	UBUS_METHOD("del_object", usp_del, dm_get_policy),
 };
 
 static struct ubus_object_type usp_type = UBUS_OBJECT_TYPE("usp", usp_methods);
@@ -294,7 +399,7 @@ static void add_granular_objects(struct ubus_context *ctx, int gn_level)
 		strcat(obj_path,p->ref_path);
 
 		size_t len = strlen(obj_path);
-		if (obj_path[len-1]=='.')
+		if (obj_path[len-1] == DELIM)
 			obj_path[len-1]='\0';
 
 		DEBUG("ubus objects to register |%s|", obj_path);

@@ -32,6 +32,7 @@ bool bbf_set_value(struct blob_buf *bb, char *path, char *value);
 bool bbf_get_value(char *path, bool fill, char *query_path);
 bool bbf_get_name(char *path);
 bool bbf_get_value_raw(char *path, struct blob_buf *bb);
+bool bbf_get_name_raw(char *path, struct blob_buf *bb);
 bool get_granular_obj_list(char *path);
 int bbf_operate(struct dmctx *dm_ctx, char *path, char *input_params);
 

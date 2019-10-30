@@ -25,10 +25,10 @@
 void add_object(struct blob_buf *bb, char *path) {
 	struct dmctx dm_ctx = {0};
 	struct dmctx *ctx = &dm_ctx;
-	int fault = 0;
+	uint32_t fault = 0;
 	INFO("Req to add object |%s|", path);
 	bbf_init(&dm_ctx, path);
-	fault = dm_entry_param_method(&dm_ctx, CMD_ADD_OBJECT, path, "true", NULL);
+	fault = (uint32_t)dm_entry_param_method(&dm_ctx, CMD_ADD_OBJECT, path, "true", NULL);
 
 	if (fault) {
 		blobmsg_add_u32(bb, "fault", fault);
@@ -50,9 +50,9 @@ void add_object(struct blob_buf *bb, char *path) {
 
 void del_object(struct blob_buf *bb, char *path) {
 	struct dmctx dm_ctx = {0};
-	int fault = 0;
+	uint32_t fault = 0;
 	bbf_init(&dm_ctx, path);
-	fault = dm_entry_param_method(&dm_ctx, CMD_DEL_OBJECT, path, "true", NULL);
+	fault = (uint32_t)dm_entry_param_method(&dm_ctx, CMD_DEL_OBJECT, path, "true", NULL);
 	if (fault) {
 		blobmsg_add_u8(bb, "status", 0);
 		blobmsg_add_u32(bb, "fault", fault);

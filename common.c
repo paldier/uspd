@@ -102,7 +102,8 @@ static bool is_node_instance(char *path) {
 		char *rb = NULL;
 		rb = strchr(path, ']');
 		char temp_char[NAME_MAX] = {'\0'};
-		strncpy(temp_char, path, rb-path);
+		size_t shift = (size_t) abs(rb-path);
+		strncpy(temp_char, path, shift);
 		if(!match(temp_char, GLOB_EXPR))
 			ret = true;
 	} else {
@@ -178,7 +179,7 @@ bool match(const char *string, const char *pattern) {
 }
 
 void bbf_init(struct dmctx *dm_ctx, char *path) {
-	int amd = AMD_2, instance = INSTANCE_MODE_ALIAS;
+	unsigned int amd = AMD_2, instance = INSTANCE_MODE_ALIAS;
 
 	if(match(path, "[[]+")) {
 		if(!match(path, GLOB_EXPR)) {
@@ -187,7 +188,7 @@ void bbf_init(struct dmctx *dm_ctx, char *path) {
 	} else {
 		char *uci_amd = NULL, *uci_instance = NULL;
 		if(get_uci_option_string("cwmp", "cpe", "amd_version", &uci_amd)) {
-			amd = atoi(uci_amd);
+			amd = (unsigned int) atoi(uci_amd);
 			free(uci_amd);
 		}
 		if(get_uci_option_string("cwmp", "cpe", "instance_mode", &uci_instance)) {
@@ -196,7 +197,7 @@ void bbf_init(struct dmctx *dm_ctx, char *path) {
 			free(uci_instance);
 		}
 	}
-	DEBUG("amd |%d| instance|%d|", amd, instance);
+	DEBUG("amd |%u| instance|%u|", amd, instance);
 	dm_ctx_init(dm_ctx, DM_CWMP, amd, instance);
 }
 
@@ -205,12 +206,12 @@ void bbf_cleanup(struct dmctx *dm_ctx) {
 }
 
 //if matched start will have first match index, end will have end index
-static bool is_res_required(char *str, int *start, int *len) {
+static bool is_res_required(char *str, size_t *start, size_t *len) {
 
 	DEBUG("Entry |%s|", str);
 	if (match(str, GLOB_CHAR)) {
-		int s_len=strlen(str);
-		int b_len=s_len, p_len=s_len;
+		size_t s_len=strlen(str);
+		size_t b_len=s_len, p_len=s_len;
 
 		char *star = strchr(str, '*');
 		char *b_start = strchr(str, '[');
@@ -218,19 +219,19 @@ static bool is_res_required(char *str, int *start, int *len) {
 		char *plus = strchr(str, '+');
 
 		if(star)
-			s_len = star - str;
+			s_len = (size_t)abs(star - str);
 
 		if(b_start)
-			b_len = b_start - str;
+			b_len = (size_t)abs(b_start - str);
 
 		if(plus)
-			p_len = plus - str;
+			p_len = (size_t)abs(plus - str);
 
 		*start = MIN(MIN(s_len, p_len), b_len);
 		if (*start == s_len) {
 			*len = 1;
 		} else if (*start == p_len) {
-			int i=0, index=0;
+			size_t i=0, index=0;
 			while((str+i)!=plus){
 				if(str[i] == DELIM)
 					index = i;
@@ -239,7 +240,7 @@ static bool is_res_required(char *str, int *start, int *len) {
 			*start = index+1;
 			*len = p_len - index;
 		} else {
-			*len = abs(b_end - b_start );
+			*len = (size_t)abs(b_end - b_start );
 		}
 
 		// Check if naming with aliases used
@@ -260,9 +261,9 @@ static void add_data_blob(struct blob_buf *bb, char *param, char *value, char *t
 		return;
 
 	if (is_str_eq(type, "xsd:unsignedInt")) {
-		blobmsg_add_u32(bb, param, atoi(value));
+		blobmsg_add_u32(bb, param, (uint32_t)atoi(value));
 	} else if (is_str_eq(type, "xsd:int")) {
-		blobmsg_add_u32(bb, param, atoi(value));
+		blobmsg_add_u32(bb, param, (uint32_t)atoi(value));
 	} else if (is_str_eq(type, "xsd:long")) {
 		blobmsg_add_double(bb, param, atol(value));
 	} else if (is_str_eq(type, "xsd:boolean")) {
@@ -524,7 +525,7 @@ void process_result(struct blob_buf *bb, unsigned int len) {
 		return;
 	}
 
-	DEBUG("Entry node |%s|, len|%d|", rnode->name, len);
+	DEBUG("Entry node |%s|, len|%u|", rnode->name, len);
 
 	if(leaf_same_group(rnode->name)) {
 		if(is_leaf(rnode->name+len, pn)) {
@@ -608,9 +609,9 @@ void process_result(struct blob_buf *bb, unsigned int len) {
 }
 
 
-static int get_glob_len(char *path) {
-	int m_index = 0, m_len=0, ret=0;
-	int plen = strlen(path);
+static size_t get_glob_len(char *path) {
+	size_t m_index = 0, m_len=0, ret=0;
+	size_t plen = strlen(path);
 	DEBUG("Entry");
 	if(is_res_required(path, &m_index, &m_len)) {
 		char temp_name[NAME_MAX] = {'\0'};
@@ -641,7 +642,7 @@ static int get_glob_len(char *path) {
 }
 
 bool is_search_by_reference(char *path) {
-	int m_index = 0, m_len=0;
+	size_t m_index = 0, m_len=0;
 	char *last_plus = strrchr(path, '+');
 	char *last_bracket = strrchr(path, ']');
 	DEBUG("Entry |%s|", path);
@@ -662,16 +663,16 @@ bool bbf_get_value(char *path, bool fill, char *query_path) {
 	struct dmctx dm_ctx = {0};
 	struct dm_parameter *n;
 	DEBUG("Entry path |%s|, fill|%d|, query_path|%s|", path, fill, query_path);
-	int plen = get_glob_len(query_path);
+	size_t plen = get_glob_len(query_path);
 
-	DEBUG("plen|%d|", plen);
+	DEBUG("plen |%u|", plen);
 	bbf_init(&dm_ctx, path);
 	if(bbf_get(CMD_GET_VALUE, path, &dm_ctx, "true")) {
 		if(fill) {
 			list_for_each_entry(n, &dm_ctx.list_parameter, list) {
 				if(is_search_by_reference(query_path)) {
 					char *end_delim = strrchr(n->name, DELIM);
-					plen = end_delim - n->name;
+					plen = (size_t)abs(end_delim - n->name);
 				}
 				DEBUG("insert node|%s|, value|%s| ", n->name+plen, n->data);
 				insert_result(n->name+plen, n->data, n->type);
@@ -770,7 +771,7 @@ static bool bbf_get_name_exp(char *path, char *operator, char *operand) {
 }
 
 bool bbf_set_value(struct blob_buf *bb, char *path, char *value) {
-	int fault = 0;
+	uint32_t fault = 0;
 	bool ret = true;
 	struct dmctx dm_ctx = {0};
 	struct dmctx *p_dmctx = &dm_ctx;
@@ -778,16 +779,16 @@ bool bbf_set_value(struct blob_buf *bb, char *path, char *value) {
 
 	bbf_init(&dm_ctx, path);
 	DEBUG("Entry path|%s|, value|%s|", path, value);
-	fault = dm_entry_param_method(&dm_ctx, CMD_SET_VALUE, path, value, NULL);
+	fault = (uint32_t)dm_entry_param_method(&dm_ctx, CMD_SET_VALUE, path, value, NULL);
 
 	if(!fault) {
-		fault = dm_entry_apply(&dm_ctx, CMD_SET_VALUE, "", NULL);
+		fault = (uint32_t)dm_entry_apply(&dm_ctx, CMD_SET_VALUE, "", NULL);
 	}
 
 	if (p_dmctx->list_fault_param.next != &p_dmctx->list_fault_param) {
 		struct param_fault *p;
 		list_for_each_entry(p, &p_dmctx->list_fault_param, list) {
-			blobmsg_add_u32(bb, p->name, p->fault);
+			blobmsg_add_u32(bb, p->name, (uint32_t)p->fault);
 		}
 		ret = false;
 	}
@@ -830,9 +831,9 @@ static void dereference_path(char *ref, char *l_op, char *r_op, char *op) {
 static void tokenize(char *exp, char *l_op, char *r_op, char *op) {
 	bool operator_found = false;
 	int index = 0, o_len=0;
-	int len = strlen(exp);
+	size_t len = strlen(exp);
 	DEBUG("Entry exp|%s|", exp);
-	for(int i=0; i<len; ++i) {
+	for(size_t i=0; i<len; ++i) {
 		switch(exp[i]) {
 			case '"':
 				{
@@ -875,7 +876,7 @@ static void solve(char *exp) {
 
 	if(plus != NULL ) {
 		char s[NAME_MAX] = {'\0'};
-		strncpy(s, exp, plus-exp);
+		strncpy(s, exp, (size_t)abs(plus-exp));
 		tokenize(plus+2, token, operand, operator);
 		dereference_path(s, token, operand, operator);
 	} else {
@@ -903,9 +904,9 @@ static void fill_node_path() {
 	deleteList();
 }
 
-static int expand_expression(char *path, char *exp) {
+static size_t expand_expression(char *path, char *exp) {
 	DEBUG("Entry path|%s|, exp|%s|", path, exp);
-	int shiftpos = 0;
+	size_t shiftpos = 0;
 
 	switch(exp[0]) {
 		case '*':
@@ -944,9 +945,9 @@ static int expand_expression(char *path, char *exp) {
 			}
 
 			if(sharp)
-				strncpy(name, exp, sharp - exp);
+				strncpy(name, exp, (size_t)abs(sharp - exp));
 			else
-				strncpy(name, exp, plus - exp);
+				strncpy(name, exp, (size_t)abs(plus - exp));
 
 			pathnode *p=head;
 			while(p!=NULL) {
@@ -974,11 +975,11 @@ static int expand_expression(char *path, char *exp) {
 	return(shiftpos);
 }
 
-void filter_results(char *path, int start, int end) {
-	int startpos = start, m_index=0, m_len=0;
+void filter_results(char *path, size_t start, size_t end) {
+	size_t startpos = start, m_index=0, m_len=0;
 	char *pp = path + startpos;
 	char exp[NAME_MAX]={'\0'};
-	DEBUG("Entry path|%s| start|%d| end|%d| pp|%s|", path, start, end, pp);
+	DEBUG("Entry path|%s| start|%u| end|%u| pp|%s|", path, start, end, pp);
 
 	if(start >= end) {
 		return;
@@ -1024,7 +1025,7 @@ void filter_results(char *path, int start, int end) {
 
 	strncpy(exp, pp+m_index, m_len);
 	pp = path + startpos;
-	int pos = 0;
+	size_t pos = 0;
 	pos = expand_expression(pp, exp);
 	startpos += pos;
 	filter_results(path, startpos, end);

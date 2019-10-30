@@ -36,7 +36,7 @@ void create_set_response(struct blob_buf *bb, char *value) {
 
 void set_multiple_values(struct blob_buf *bb, struct blob_attr *blob_value) {
 
-	int tlen = blobmsg_data_len(blob_value);
+	size_t tlen = (size_t)blobmsg_data_len(blob_value);
 	struct blob_attr *attr;
 
 	__blob_for_each_attr(attr, blobmsg_data(blob_value), tlen) {
@@ -58,14 +58,14 @@ void set_multiple_values(struct blob_buf *bb, struct blob_attr *blob_value) {
 					sprintf(value, "%d", *(uint16_t *)blobmsg_data(attr));
 					break;
 				case BLOBMSG_TYPE_INT32:
-					sprintf(value, "%d", *(uint32_t *)blobmsg_data(attr));
+					sprintf(value, "%u", *(uint32_t *)blobmsg_data(attr));
 					break;
 				case BLOBMSG_TYPE_INT64:
 				case BLOBMSG_TYPE_DOUBLE:
-					sprintf(value, "%lld", *(uint64_t *)blobmsg_data(attr));
+					sprintf(value, "%llu", *(uint64_t *)blobmsg_data(attr));
 					break;
 				default:
-					INFO("Unhandled set request type|%d|", blob_id(attr));
+					INFO("Unhandled set request type|%x|", blob_id(attr));
 					break;
 			}
 

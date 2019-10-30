@@ -37,7 +37,7 @@ bool get_granular_obj_list(char *path);
 int bbf_operate(struct dmctx *dm_ctx, char *path, char *input_params);
 
 void insert(char *data, bool active);
-void filter_results(char *path, int start, int end);
+void filter_results(char *path, size_t start, size_t end);
 
 void deleteList();
 void printList(bool active);

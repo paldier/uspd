@@ -292,6 +292,184 @@ root@iopsys:~# ubus call usp.Device get '{"path":"Users."}'
 }
 ```
 
+### More example ###
+
+```
+root@iopsys:~# ubus call usp get '{"path":"Device.WiFi.SSID.*.SSID"}'
+{
+        "SSID": [
+                {
+                        "SSID": "NORRLAND-34E380760120"
+                },
+                {
+                        "SSID": "NORRLAND-34E380760120"
+                }
+        ]
+}
+
+
+root@iopsys:~# ubus call usp get '{"path":"Device.WiFi.SSID.*.BSSID"}'
+{
+        "SSID": [
+                {
+                        "BSSID": "34:E3:80:76:01:22"
+                },
+                {
+                        "BSSID": "34:E3:80:76:01:23"
+                }
+        ]
+}
+
+
+root@iopsys:~# ubus call usp get '{"path":"Device.WiFi.SSID.[BSSID==\"34:E3:80:76:01:22\"].SSID"}'
+{
+        "SSID": [
+                {
+                        "SSID": "NORRLAND-34E380760120"
+                }
+        ]
+}
+
+
+root@iopsys:~# ubus call usp set '{"path":"Device.WiFi.SSID.[BSSID==\"34:E3:80:76:01:22\"].SSID", "value":"test-2g"}'
+{
+        {
+                "status": true,
+                "path": "Device.WiFi.SSID.1.SSID"
+        }
+}
+
+
+root@iopsys:~# ubus call usp get '{"path":"Device.WiFi.SSID.[BSSID==\"34:E3:80:76:01:22\"].SSID"}'?
+{
+        "SSID": [
+                {
+                        "SSID": "test-2g"
+                }
+        ]
+}
+
+
+root@iopsys:~# ubus call usp get '{"path":"Device.IP.Interface.[Status==\"Up\"].IPv4Address.[AddressingType==\"DHCP\"].IPAddress"}'
+{
+        "Interface": [
+                {
+                        "IPv4Address": [
+                                {
+                                        "IPAddress": "192.168.0.96"
+                                }
+                        ]
+                }
+        ]
+}
+
+
+root@iopsys:~# ubus call usp get '{"path":"Device.IP.Interface.[Status==\"Up\"].IPv4Address.[AddressingType==\"DHCP\"&&Status==\"Up\"]."}'
+{
+        "Interface": [
+                {
+                        "IPv4Address": [
+                                {
+                                        "AddressingType": "DHCP",
+                                        "Alias": "cpe-2",
+                                        "Enable": true,
+                                        "IPAddress": "192.168.0.96",
+                                        "Status": "Up",
+                                        "SubnetMask": "255.255.255.0",
+                                        "X_IOPSYS_EU_FirewallEnabled": true
+                                }
+                        ]
+                }
+        ]
+}
+
+
+root@iopsys:~# ubus call usp get '{"path":"Device.IP.Interface.[Type==\"Normal\"&&Stats.PacketsSent<=500].IPv4Address.[AddressingType==\"Static\"].IPAddress"}'
+{
+        "Interface": [
+                {
+                        "IPv4Address": [
+                                {
+                                        "IPAddress": "192.168.1.1"
+                                }
+                        ]
+                }
+        ]
+}
+
+root@iopsys:~# ubus call usp get '{"path":"Device.WiFi.AccessPoint.[SSIDReference+.SSID==\"NORRLAND-34E380760120\"].AssociatedDevice.[Noise>15].SignalStrength"}
+'
+{
+        "AccessPoint": [
+                {
+                        "AssociatedDevice": [
+                                {
+                                        "SignalStrength": -31
+                                }
+                        ]
+                }
+        ]
+}
+
+
+root@iopsys:~# ubus call usp get '{"path":"Device.WiFi.SSID.*.LowerLayers#1+.Name"}'
+{
+        {
+                "Name": "wlan0",
+                "Name": "wlan2"
+        }
+}
+
+
+root@iopsys:~# ubus call usp add_object '{"path":"Device.Users.User"}'
+{
+        "status": true,
+        "instance": "4"
+}
+
+
+root@iopsys:~# ubus call usp del_object '{"path":"Device.Users.User.[Username==\"user_4\"]."}'
+{
+        "status": true
+}
+
+
+root@iopsys:~# ubus call usp get '{"path":"Device.Users.User.*.Username"}'
+{
+        "User": [
+                {
+                        "Username": "user"
+                },
+                {
+                        "Username": "support"
+                },
+                {
+                        "Username": "admin"
+                }
+        ]
+}
+
+
+root@iopsys:~# ubus call usp operate '{"path":"Device.IP.Diagnostics.", "action":"IPPing","input":{"Host":"iopsys.eu"}}'
+{
+        "AverageResponseTime": "0",
+        "AverageResponseTimeDetailed": "0",
+        "FailureCount": "3",
+        "MaximumResponseTime": "0",
+        "MaximumResponseTimeDetailed": "0",
+        "MinimumResponseTime": "9999",
+        "MinimumResponseTimeDetailed": "999999999",
+        "SuccessCount": "0"
+}
+
+
+root@iopsys:~# ubus call usp operate '{"path":"Device.IP.Interface.[Name==\"wan\"]", "action":"Reset"}'
+{
+        "status": true
+}
+
+```
+
 ## Configuration File ##
 
 uspd requires a configuration file to provide more granular objects over ubus. Granularity is an optional feature of uspd, it can be skipped or set to level 0. The configuration file is an uci file `/etc/config/uspd`. Sample configuration file is provided below.
@@ -306,6 +484,13 @@ config uspd 'usp'
 uspd internally uses libbbfdm to get the datamodel objects. On startup it parses the uci file to check if the granularity is set and then as per the granularity value it registers the required ubus namespaces.
 
 When a ubus method is called it first checks the `path` parameter to identify if it has special USP syntax, if present it parses and determine the correct objects from libbbfdm, then proceeds with the `Get/Set/Operate/Add/Del` operation on the quilified objects.
+
+So, uspd search for `[[+*]+` in path expression, if it matches then segments the path and get the schema from libbbfdm and store it in a linklist, then it proceeds with the next segment to filter out the unneeded schema paths. It keeps on doing so till all the expressions are solved and it finally left with qualified objects.
+Once all the expressions are solved, it starts getting the values for qualified objects and store it in a `stack` to print the output in pretty format.
+
+For operate command, it solve the path expression and then call `bbf_operate` from `libbbfdm` to execute the operate command.
+
+uspd uses `dm_entry_param_method` API from `libbbfdm` to get the device tree schema and it's values.
 
 In short, it covers/supports the new syntax introduced in `TR-369` by using the existing datamodel available with libbbfdm.
 

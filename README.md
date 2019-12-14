@@ -502,7 +502,7 @@ To successfully build uspd, following libraries are needed:
 
 | Dependency |                    Link                     |    License     |
 | ---------- | ------------------------------------------- | -------------- |
-| libuci     | https://git.openwrt.org/project/uci.git     | GPLv2          |
+| libuci     | https://git.openwrt.org/project/uci.git     | LGPL 2.1       |
 | libubox    | https://git.openwrt.org/project/libubox.git | BSD            |
 | libubus    | https://git.openwrt.org/project/ubus.git    | LGPL 2.1       |
 | libjson-c  | https://s3.amazonaws.com/json-c_releases    | MIT            |

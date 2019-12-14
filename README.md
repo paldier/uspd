@@ -506,7 +506,7 @@ To successfully build uspd, following libraries are needed:
 | libubox    | https://git.openwrt.org/project/libubox.git | BSD            |
 | libubus    | https://git.openwrt.org/project/ubus.git    | LGPL 2.1       |
 | libjson-c  | https://s3.amazonaws.com/json-c_releases    | MIT            |
-| libbbfdm   | https://dev.iopsys.eu/iopsys/bbf.git        | GPLv2          |
+| libbbfdm   | https://dev.iopsys.eu/iopsys/bbf.git        | LGPL 2.1       |
 
 
 ### Run-Time Dependencies ###

@@ -29,6 +29,12 @@
 #include <libubox/uloop.h>
 #include <libubus.h>
 
+/* Not all libc implementations have MAXNAMLEN defined
+ */
+#ifndef MAXNAMLEN
+#define MAXNAMLEN 512
+#endif
+
 #include "set.h"
 #include "get.h"
 #include "operate.h"

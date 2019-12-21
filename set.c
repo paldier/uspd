@@ -62,7 +62,7 @@ void set_multiple_values(struct blob_buf *bb, struct blob_attr *blob_value) {
 					break;
 				case BLOBMSG_TYPE_INT64:
 				case BLOBMSG_TYPE_DOUBLE:
-					sprintf(value, "%llu", *(uint64_t *)blobmsg_data(attr));
+					sprintf(value, "%"PRIu64, *(uint64_t *)blobmsg_data(attr));
 					break;
 				default:
 					INFO("Unhandled set request type|%x|", blob_id(attr));

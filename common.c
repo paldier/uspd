@@ -158,7 +158,7 @@ static bool is_node_instance(char *path) {
 		char *rb = NULL;
 		rb = strchr(path, ']');
 		char temp_char[NAME_MAX] = {'\0'};
-		size_t shift = (size_t) abs(rb-path);
+		size_t shift = (size_t) labs(rb-path);
 		strncpy(temp_char, path, shift);
 		if(!match(temp_char, GLOB_EXPR))
 			ret = true;
@@ -258,13 +258,13 @@ static bool is_res_required(char *str, size_t *start, size_t *len) {
 		char *plus = strchr(str, '+');
 
 		if(star)
-			s_len = (size_t)abs(star - str);
+			s_len = (size_t)labs(star - str);
 
 		if(b_start)
-			b_len = (size_t)abs(b_start - str);
+			b_len = (size_t)labs(b_start - str);
 
 		if(plus)
-			p_len = (size_t)abs(plus - str);
+			p_len = (size_t)labs(plus - str);
 
 		*start = MIN(MIN(s_len, p_len), b_len);
 		if (*start == s_len) {
@@ -279,7 +279,7 @@ static bool is_res_required(char *str, size_t *start, size_t *len) {
 			*start = index+1;
 			*len = p_len - index;
 		} else {
-			*len = (size_t)abs(b_end - b_start );
+			*len = (size_t)labs(b_end - b_start );
 		}
 
 		// Check if naming with aliases used
@@ -704,14 +704,14 @@ bool bbf_get_value(char *path, bool fill, char *query_path) {
 	DEBUG("Entry path |%s|, fill|%d|, query_path|%s|", path, fill, query_path);
 	size_t plen = get_glob_len(query_path);
 
-	DEBUG("plen |%u|", plen);
+	DEBUG("plen |%zu|", plen);
 	bbf_init(&dm_ctx, path);
 	if(bbf_get(CMD_GET_VALUE, path, &dm_ctx, "true")) {
 		if(fill) {
 			list_for_each_entry(n, &dm_ctx.list_parameter, list) {
 				if(is_search_by_reference(query_path)) {
 					char *end_delim = strrchr(n->name, DELIM);
-					plen = (size_t)abs(end_delim - n->name);
+					plen = (size_t)labs(end_delim - n->name);
 				}
 				DEBUG("insert node|%s|, value|%s| ", n->name+plen, n->data);
 				insert_result(n->name+plen, n->data, n->type);
@@ -947,7 +947,7 @@ static void solve(char *exp) {
 
 	if(plus != NULL ) {
 		char s[NAME_MAX] = {'\0'};
-		strncpy(s, exp, (size_t)abs(plus-exp));
+		strncpy(s, exp, (size_t)labs(plus-exp));
 		tokenize(plus+2, token, operand, operator);
 		dereference_path(s, token, operand, operator);
 	} else {
@@ -1003,7 +1003,7 @@ static size_t expand_expression(char *path, char *exp) {
 			int ref_number=1;
 			char *node = NULL;
 			char name[NAME_MAX] = {'\0'};
-			char path[NAME_MAX] = {'\0'};
+			char _path[NAME_MAX] = {'\0'};
 			if(sharp) {
 				ref_number = atoi(sharp +1);
 				DEBUG("sharp |%s|, ins |%d|", sharp, ref_number);
@@ -1016,15 +1016,15 @@ static size_t expand_expression(char *path, char *exp) {
 			}
 
 			if(sharp)
-				strncpy(name, exp, (size_t)abs(sharp - exp));
+				strncpy(name, exp, (size_t)labs(sharp - exp));
 			else
-				strncpy(name, exp, (size_t)abs(plus - exp));
+				strncpy(name, exp, (size_t)labs(plus - exp));
 
 			pathnode *p=head;
 			while(p!=NULL) {
 				char *token = NULL;
-				sprintf(path,"%s%s", p->ref_path, name);
-				node = bbf_get_value_by_id(path);
+				sprintf(_path,"%s%s", p->ref_path, name);
+				node = bbf_get_value_by_id(_path);
 				int node_count = 1;
 				while ((token = strtok_r(node, ",", &node))) {
 					if(node_count == ref_number)
@@ -1050,7 +1050,7 @@ void filter_results(char *path, size_t start, size_t end) {
 	size_t startpos = start, m_index=0, m_len=0;
 	char *pp = path + startpos;
 	char exp[NAME_MAX]={'\0'};
-	DEBUG("Entry path|%s| start|%u| end|%u| pp|%s|", path, start, end, pp);
+	DEBUG("Entry path|%s| start|%zu| end|%zu| pp|%s|", path, start, end, pp);
 
 	if(start >= end) {
 		return;

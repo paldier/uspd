@@ -11,7 +11,7 @@ PROG_LDFLAGS += -luci -lubus -lubox -ljson-c -lblobmsg_json -lbbfdm
 all: uspd
 
 uspd: $(OBJS)
-	$(CC) $(PROG_LDFLAGS) -o $@ $^
+	$(CC) -o $@ $^ $(PROG_LDFLAGS)
 
 clean:
 	rm -f *.o $(PROG)

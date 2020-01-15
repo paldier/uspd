@@ -542,7 +542,6 @@ static void usp_init(struct ubus_context *ctx)
 
 		free(gran_level);
 	}
-	uloop_run();
 }
 
 int main()

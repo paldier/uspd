@@ -4,6 +4,7 @@ enum {
 	DM_SET_PATH,
 	DM_SET_VALUE,
 	DM_SET_VALUE_TABLE,
+	DM_SET_PROTO,
 	__DMSET_MAX,
 };
 

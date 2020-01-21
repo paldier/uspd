@@ -2,6 +2,7 @@
 #define GET_H
 enum {
 	DMPATH_NAME,
+	DMPATH_PROTO,
 	__DM_MAX,
 };
 

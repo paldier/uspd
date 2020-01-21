@@ -64,8 +64,29 @@ static bool is_sanitized(char *param)
 }
 
 static const struct blobmsg_policy dm_get_policy[__DM_MAX] = {
-	[DMPATH_NAME] = { .name = "path", .type = BLOBMSG_TYPE_STRING }
+	[DMPATH_NAME] = { .name = "path", .type = BLOBMSG_TYPE_STRING },
+	[DMPATH_PROTO] = { .name = "proto", .type = BLOBMSG_TYPE_STRING }
 };
+
+static void set_bbf_data_type(struct blob_attr *proto)
+{
+	int type;
+
+	if (proto) {
+		const char *val = blobmsg_get_string(proto);
+
+		if (!strcmp("cwmp", val))
+			type = BBFDM_CWMP;
+		else if (!strcmp("usp", val))
+			type = BBFDM_USP;
+		else
+			type = BBFDM_BOTH;
+	} else {
+		type = BBFDM_BOTH;
+	}
+
+	set_bbfdatamodel_type(type);
+}
 
 static int usp_get(struct ubus_context *ctx, struct ubus_object *obj,
 		struct ubus_request_data *req, const char *method,
@@ -87,6 +108,8 @@ static int usp_get(struct ubus_context *ctx, struct ubus_object *obj,
 		ERR("Invalid option |%s|", (char *)blobmsg_data(tb[DMPATH_NAME]));
 		return UBUS_STATUS_INVALID_ARGUMENT;
 	}
+
+	set_bbf_data_type(tb[DMPATH_PROTO]);
 
 	struct blob_buf bb;
 	memset(&bb,0,sizeof(struct blob_buf));
@@ -134,6 +157,8 @@ static int usp_add(struct ubus_context *ctx, struct ubus_object *obj,
 		ERR("Invalid option |%s|", (char *)blobmsg_data(tb[DMPATH_NAME]));
 		return UBUS_STATUS_INVALID_ARGUMENT;
 	}
+
+	set_bbf_data_type(tb[DMPATH_PROTO]);
 
 	struct blob_buf bb;
 	memset(&bb,0,sizeof(struct blob_buf));
@@ -224,6 +249,8 @@ static int usp_object_name(struct ubus_context *ctx, struct ubus_object *obj,
 		return UBUS_STATUS_INVALID_ARGUMENT;
 	}
 
+	set_bbf_data_type(tb[DMPATH_PROTO]);
+
 	struct blob_buf bb;
 	memset(&bb,0,sizeof(struct blob_buf));
 	blob_buf_init(&bb, 0);
@@ -266,6 +293,8 @@ static int usp_del(struct ubus_context *ctx, struct ubus_object *obj,
 		return UBUS_STATUS_INVALID_ARGUMENT;
 	}
 
+	set_bbf_data_type(tb[DMPATH_PROTO]);
+
 	struct blob_buf bb;
 	memset(&bb,0,sizeof(struct blob_buf));
 	blob_buf_init(&bb, 0);
@@ -301,7 +330,8 @@ static int usp_del(struct ubus_context *ctx, struct ubus_object *obj,
 const struct blobmsg_policy dm_set_policy[__DMSET_MAX] = {
 	[DM_SET_PATH] = { .name = "path", .type = BLOBMSG_TYPE_STRING },
 	[DM_SET_VALUE] = { .name = "value", .type = BLOBMSG_TYPE_STRING },
-	[DM_SET_VALUE_TABLE] = { .name = "values", .type = BLOBMSG_TYPE_TABLE }
+	[DM_SET_VALUE_TABLE] = { .name = "values", .type = BLOBMSG_TYPE_TABLE },
+	[DM_SET_PROTO] = { .name = "proto", .type = BLOBMSG_TYPE_STRING }
 };
 int usp_set(struct ubus_context *ctx, struct ubus_object *obj,
 		struct ubus_request_data *req, const char *method,
@@ -326,6 +356,8 @@ int usp_set(struct ubus_context *ctx, struct ubus_object *obj,
 		ERR("Invalid option |%s|", (char *)blobmsg_data(tb[DM_SET_PATH]));
 		return UBUS_STATUS_INVALID_ARGUMENT;
 	}
+
+	set_bbf_data_type(tb[DM_SET_PROTO]);
 
 	struct blob_buf bb;
 	memset(&bb,0,sizeof(struct blob_buf));
@@ -369,7 +401,8 @@ int usp_set(struct ubus_context *ctx, struct ubus_object *obj,
 static const struct blobmsg_policy dm_operate_policy[__DM_OPERATE_MAX] = {
 	[DM_OPERATE_PATH] = { .name = "path", .type = BLOBMSG_TYPE_STRING },
 	[DM_OPERATE_ACTION] = { .name = "action", .type = BLOBMSG_TYPE_STRING },
-	[DM_OPERATE_INPUT] = { .name = "input", .type = BLOBMSG_TYPE_TABLE }
+	[DM_OPERATE_INPUT] = { .name = "input", .type = BLOBMSG_TYPE_TABLE },
+	[DM_OPERATE_PROTO] = { .name = "proto", .type = BLOBMSG_TYPE_STRING }
 };
 
 int usp_operate(struct ubus_context *ctx, struct ubus_object *obj,
@@ -397,6 +430,8 @@ int usp_operate(struct ubus_context *ctx, struct ubus_object *obj,
 		ERR("Invalid option |%s|", (char *)blobmsg_data(tb[DM_OPERATE_PATH]));
 		return UBUS_STATUS_INVALID_ARGUMENT;
 	}
+
+	set_bbf_data_type(tb[DM_OPERATE_PROTO]);
 
 	memset(&bb, 0, sizeof(struct blob_buf));
 	blob_buf_init(&bb, 0);

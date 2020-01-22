@@ -131,29 +131,12 @@ int usp_uci_teardown(void)
 	return 0;
 }
 
-bool db_get_value(char *package, char *section, char *option, char **value)
-{
-	struct uci_option *o;
-	bool ret = true;
-	usp_uci_init();
-
-	o = dmuci_get_option_ptr(DB_CONFIG, package, section, option);
-	if (o) {
-		*value = o->v.string ? dmstrdup(o->v.string) : "";
-	} else {
-		*value = "";
-		ret = false;
-	}
-	usp_uci_teardown();
-	return (ret);
-}
-
 bool get_uci_option_string(char *package, char *section, char *option, char **value) {
 	struct uci_ptr ptr = {0};
 	bool ret = true;
 	usp_uci_init();
 
-	if (dmuci_lookup_ptr(uci_ctx, &ptr, package, section, option, NULL)) {
+	if (bbfdmuci_lookup_ptr(uci_ctx, &ptr, package, section, option, NULL)) {
 		*value = "";
 		ret = false;
 	}

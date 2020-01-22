@@ -490,7 +490,7 @@ int main()
 
 	openlog("uspd", LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL1);
 
-	bbfdatamodel_type = BBFDM_USP; // To show only USP parameters
+	set_bbfdatamodel_type(BBFDM_USP); // To show only USP parameters
 
 	uloop_init();
 	ctx = ubus_connect(ubus_socket);

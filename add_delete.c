@@ -42,7 +42,7 @@ void add_object(struct blob_buf *bb, char *path) {
 			blobmsg_add_u32(bb, "fault", FAULT_9002);
 		}
 	
-		apply_end_session();
+		bbf_apply_end_session();
 		dm_entry_restart_services();
 	}
 	bbf_cleanup(&dm_ctx);
@@ -58,7 +58,7 @@ void del_object(struct blob_buf *bb, char *path) {
 		blobmsg_add_u32(bb, "fault", fault);
 	} else {
 		blobmsg_add_u8(bb, "status", 1);
-		apply_end_session();
+		bbf_apply_end_session();
 		dm_entry_restart_services();
 	}
 	bbf_cleanup(&dm_ctx);

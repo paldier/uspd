@@ -38,6 +38,8 @@
 #define USP "usp"
 #define USP_GRA "usp."
 #define RAWUSP "usp.raw"
+#define DEFAULT_LOG_LEVEL (2)
+
 extern pathnode *head;
 
 static bool is_sanitized(char *param)
@@ -456,6 +458,14 @@ static void usp_init(struct ubus_context *ctx)
 {
 	int ret;
 
+	char *log_level = NULL;
+	if (!(get_uci_option_string("uspd", "usp", "loglevel", &log_level))) {
+		ERR("loglevel get failed, defaults to|0x%x|", DEFAULT_LOG_LEVEL);
+		set_debug_level(DEFAULT_LOG_LEVEL);
+	} else {
+		set_debug_level(atoi(log_level));
+		free(log_level);
+	}
 
 	ret = ubus_add_object(ctx, &usp_object);
 	if (ret)
@@ -476,9 +486,11 @@ static void usp_init(struct ubus_context *ctx)
 		int gn_level = atoi(gran_level);
 		DEBUG("Granularity level is %d", gn_level);
 		if (gn_level < 0)
-			ERR("Granularity Level should either be zero or a positive number");
+			WARNING("Granularity Level should either be zero or a positive number");
 		else
 			add_granular_objects(ctx, gn_level);
+
+		free(gran_level);
 	}
 	uloop_run();
 }

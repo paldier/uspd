@@ -27,6 +27,7 @@
 #define GLOB_EXPR "[=><]+"
 #define RESULT_STACK 15
 
+static unsigned char gLogLevel;
 static bool is_node_instance(char *path);
 static bool is_leaf(char *path, char *);
 bool match(const char *string, const char *pattern);
@@ -51,6 +52,61 @@ static resultstack g_result[RESULT_STACK];
 static resultnode *rnode = NULL;
 pathnode *head = NULL;
 static pathnode *temphead = NULL;
+
+// Logging utilities
+void set_debug_level(unsigned char level)
+{
+	gLogLevel = level;
+}
+
+void print_error(const char *format, ...)
+{
+	va_list arglist;
+
+	va_start( arglist, format );
+	vsyslog(LOG_ERR, format, arglist);
+	va_end( arglist );
+
+	return;
+}
+
+void print_warning(const char *format, ...)
+{
+	va_list arglist;
+	if (gLogLevel < 1) {
+		return;
+	}
+
+	va_start( arglist, format );
+	vsyslog(LOG_WARNING, format, arglist);
+	va_end( arglist );
+}
+
+void print_info(const char *format, ...)
+{
+	va_list arglist;
+
+	if (gLogLevel < 2) {
+		return;
+	}
+
+	va_start( arglist, format );
+	vsyslog(LOG_INFO, format, arglist);
+	va_end( arglist );
+}
+
+void print_debug(const char *format, ...)
+{
+	va_list arglist;
+
+	if (gLogLevel < 3) {
+		return;
+	}
+
+	va_start( arglist, format );
+	vsyslog(LOG_DEBUG, format, arglist);
+	va_end( arglist );
+}
 
 // Stack utils
 bool is_stack_empty() {
@@ -143,7 +199,7 @@ bool get_uci_option_string(char *package, char *section, char *option, char **va
 	else if (ptr.o && ptr.o->v.string) {
 		*value = strdup(ptr.o->v.string);
 	} else {
-		*value = "";
+		*value = NULL;
 		ret = false;
 	}
 	usp_uci_teardown();

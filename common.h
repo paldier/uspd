@@ -50,21 +50,30 @@ void prepare_result(struct blob_buf *bb);
 
 bool get_uci_option_string(char *package, char *section, char *option, char **value);
 
-#define DEBUG_ENABLED 0
+void set_debug_level(unsigned char level);
+void print_error(const char *format, ...);
+void print_warning(const char *format, ...);
+void print_info(const char *format, ...);
+void print_debug(const char *format, ...);
+
 #define DEBUG(fmt, args...) \
 do { \
-	if (DEBUG_ENABLED) \
-		syslog(LOG_DEBUG, "[%s:%d] " fmt, __func__, __LINE__, ##args); \
+	print_debug(fmt, ##args); \
 } while (0)
 
 #define INFO(fmt, args...) \
 do { \
-	syslog(LOG_INFO, "[%s:%d] " fmt, __func__, __LINE__, ##args); \
+	print_info(fmt, ##args); \
 } while (0)
 
 #define ERR(fmt, args...) \
 do { \
-	syslog(LOG_ERR, "[%s:%d] " fmt, __func__, __LINE__, ##args); \
+	print_error("[%s:%d] " fmt, __func__, __LINE__, ##args); \
+} while (0)
+
+#define WARNING(fmt, args...) \
+do { \
+	print_warning("[%s:%d] " fmt, __func__, __LINE__, ##args); \
 } while (0)
 
 #endif /* COMMON_H */

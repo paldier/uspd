@@ -65,7 +65,7 @@ static int usp_get(struct ubus_context *ctx, struct ubus_object *obj,
 		struct ubus_request_data *req, const char *method,
 		struct blob_attr *msg)
 {
-	DEBUG("Entry method|%s| ubus name|%s|", method, obj->name);
+	INFO("Entry method|%s| ubus name|%s|", method, obj->name);
 	struct blob_attr *tb[__DM_MAX] = {NULL};
 	char path[PATH_MAX] = {'\0'};
 
@@ -94,6 +94,7 @@ static int usp_get(struct ubus_context *ctx, struct ubus_object *obj,
 		strcpy(path, blobmsg_data(tb[DMPATH_NAME]));
 	}
 
+	INFO("%s path |%s|", __func__, path);
 	filter_results(path, 0, strlen(path));
 	if(is_str_eq(obj->name, RAWUSP)) {
 		create_raw_response(&bb);
@@ -111,7 +112,7 @@ static int usp_add(struct ubus_context *ctx, struct ubus_object *obj,
 		struct ubus_request_data *req, const char *method,
 		struct blob_attr *msg)
 {
-	DEBUG("Entry method|%s| ubus name|%s|", method, obj->name);
+	INFO("Entry method|%s| ubus name|%s|", method, obj->name);
 	struct blob_attr *tb[__DM_MAX] = {NULL};
 	char path[PATH_MAX] = {'\0'};
 
@@ -158,7 +159,7 @@ static int usp_object_name(struct ubus_context *ctx, struct ubus_object *obj,
 		struct ubus_request_data *req, const char *method,
 		struct blob_attr *msg)
 {
-	DEBUG("Entry method|%s| ubus name|%s|", method, obj->name);
+	INFO("Entry method|%s| ubus name|%s|", method, obj->name);
 	struct blob_attr *tb[__DM_MAX] = {NULL};
 	char path[PATH_MAX] = {'\0'};
 
@@ -200,7 +201,7 @@ static int usp_del(struct ubus_context *ctx, struct ubus_object *obj,
 		struct ubus_request_data *req, const char *method,
 		struct blob_attr *msg)
 {
-	DEBUG("Entry method|%s| ubus name|%s|", method, obj->name);
+	INFO("Entry method|%s| ubus name|%s|", method, obj->name);
 	struct blob_attr *tb[__DM_MAX] = {NULL};
 	char path[PATH_MAX] = {'\0'};
 
@@ -258,7 +259,7 @@ int usp_set(struct ubus_context *ctx, struct ubus_object *obj,
 		struct ubus_request_data *req, const char *method,
 		struct blob_attr *msg)
 {
-	DEBUG("Entry method|%s| ubus name|%s|", method, obj->name);
+	INFO("Entry method|%s| ubus name|%s|", method, obj->name);
 	struct blob_attr *tb[__DMSET_MAX] = {NULL};
 	char path[PATH_MAX]={'\0'}, value[NAME_MAX]={'\0'};
 
@@ -331,7 +332,7 @@ int usp_operate(struct ubus_context *ctx, struct ubus_object *obj,
 	struct blob_buf bb;
 	char path[PATH_MAX]={'\0'};
 	char cmd[NAME_MAX]={'\0'};
-	DEBUG("Entry method|%s| ubus name|%s|", method, obj->name);
+	INFO("Entry method|%s| ubus name|%s|", method, obj->name);
 
 	if(blobmsg_parse(dm_operate_policy, __DM_OPERATE_MAX, tb, blob_data(msg), blob_len(msg))) {
 		ERR("Failed to parse blob");
@@ -426,7 +427,7 @@ static void add_granular_objects(struct ubus_context *ctx, int gn_level)
 	pathnode *p=head;
 
 	if (gn_level == 0) {
-		DEBUG("Granularity level is set to zero. No more 'usp' ubus objects to add");
+		INFO("Granularity level is set to zero. No more 'usp' ubus objects to add");
 		return;
 	}
 

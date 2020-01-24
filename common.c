@@ -126,7 +126,7 @@ bool push() {
 bool pop() {
 	DEBUG("entry");
 	if(is_stack_empty()) {
-		INFO("Stack empty, can't pop");
+		WARNING("Stack empty, can't pop");
 		return false;
 	}
 	free(g_result[rtop].key);

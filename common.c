@@ -742,6 +742,38 @@ bool bbf_get_value_raw(char *path, struct blob_buf *bb) {
 	return true;
 }
 
+bool bbf_get_inst_name_raw(char *path, struct blob_buf *bb) {
+        struct dmctx dm_ctx = {0};
+        struct dm_parameter *n;
+        DEBUG("Entry path |%s|", path);
+
+
+        bbf_init(&dm_ctx, path);
+        if(bbf_get(CMD_GET_NAME, path, &dm_ctx, "false")) {
+                list_for_each_entry(n, &dm_ctx.list_parameter, list) {
+                        size_t nlen = strlen(n->name);
+			size_t cnt = 1;
+			bool is_inst = true;
+                        if(n->name[nlen-1]=='.') {
+				while(n->name[nlen-1-cnt] != '.') {
+					if(!(isdigit(n->name[nlen-1-cnt]))) {
+						is_inst = false;
+						break;
+					}
+					cnt += 1;
+				}
+				if(is_inst) {
+					void *table = blobmsg_open_table(bb, NULL);
+					blobmsg_add_string(bb, "parameter", n->name);
+					blobmsg_close_table(bb, table);
+				}
+			}
+		}
+	}
+        bbf_cleanup(&dm_ctx);
+        return true;
+}
+
 bool bbf_get_name_raw(char *path, struct blob_buf *bb) {
 	struct dmctx dm_ctx = {0};
 	struct dm_parameter *n;

@@ -22,6 +22,7 @@
  */
 
 #include <stdio.h>
+#include <stdlib.h>
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE
 #endif
@@ -206,6 +207,8 @@ static int usp_object_instances(struct ubus_context *ctx, struct ubus_object *ob
 		ERR("Invalid option |%s|", (char *)blobmsg_data(tb[DMPATH_NAME]));
 		return UBUS_STATUS_INVALID_ARGUMENT;
 	}
+
+	set_bbf_data_type(tb[DMPATH_PROTO]);
 
 	struct blob_buf bb;
 	memset(&bb,0,sizeof(struct blob_buf));
@@ -515,6 +518,8 @@ static void add_granular_objects(struct ubus_context *ctx, int gn_level)
 		return;
 	}
 
+	set_bbfdatamodel_type(BBFDM_BOTH);
+
 	insert(strdup("Device."), true);
 	for (int i = 2; i <= gn_level; i++) {
 		p = head;
@@ -545,7 +550,7 @@ static void usp_init(struct ubus_context *ctx)
 
 	char *log_level = NULL;
 	if (!(get_uci_option_string("uspd", "usp", "loglevel", &log_level))) {
-		ERR("loglevel get failed, defaults to|0x%x|", DEFAULT_LOG_LEVEL);
+		INFO("loglevel get failed, defaults to|0x%x|", DEFAULT_LOG_LEVEL);
 		set_debug_level(DEFAULT_LOG_LEVEL);
 	} else {
 		set_debug_level(atoi(log_level));
@@ -553,19 +558,23 @@ static void usp_init(struct ubus_context *ctx)
 	}
 
 	ret = ubus_add_object(ctx, &usp_object);
-	if (ret)
+	if (ret) {
 		ERR("Failed to add 'usp' ubus object: %s\n", ubus_strerror(ret));
+		exit(ret);
+	}
 
 	ret = ubus_add_object(ctx, &usp_raw_object);
-	if (ret)
+	if (ret) {
 		ERR("Failed to add 'usp' ubus object: %s\n", ubus_strerror(ret));
+		exit(ret);
+	}
 
 	// Get Granularity level of 'uspd' ubus objects
 	char *gran_level = NULL;
 
 	if (!(get_uci_option_string("uspd", "usp", "granularitylevel",
 				   &gran_level))) {
-		ERR("Failed to fetch uci option 'granularitylevel'");
+		INFO("Failed to fetch uci option 'granularitylevel'");
 	} else {
 
 		int gn_level = atoi(gran_level);

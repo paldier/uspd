@@ -1,6 +1,6 @@
 # README #
 
-uspd is a [TR-369/USP](https://usp.technology/) backend ubus daemon process to understand [USP syntax](https://usp.technology/specification/architecture/) defined in R-ARC.7 - R-ARC.12 and provide details.
+`uspd` is a [TR-369/USP](https://usp.technology/) backend ubus daemon process to understand [USP syntax](https://usp.technology/specification/architecture/) defined in R-ARC.7 - R-ARC.12 and provide details.
 
 ## Project Components ##
 
@@ -11,13 +11,13 @@ Project consists of following components:
 
 ## Build Instructions ##
 
-uspd is written using C programming language and depends on a number of components found in OpenWrt for building and running.
+`uspd` is written using C programming language and depends on a number of components found in OpenWrt for building and running.
 
 ## Usage ##
 
-uspd needs to be started on startup after ubusd, as it exposes the USP functionality over ubus. By default(when granularity is not set in uci), uspd registers below two namespaces with ubus.
+`uspd` needs to be started on startup after `ubusd`, as it exposes the USP functionality over ubus. By default(when granularity is not set in uci), uspd registers below two namespaces with ubus.
 
-```
+```json
 root@iopsys:~# ubus list |grep usp
 usp
 usp.raw
@@ -25,29 +25,211 @@ usp.raw
 
 Each namespace provide the similar result but in different formats. `usp` namespace is to provide the output as required by `USP` or `End User` or in pretty format, whereas `usp.raw` namespace is to provide output in raw format, which can be used by other USP frontend applications(like: obuspa). Each namespace has below functionalities.
 
-```
+```json
 root@iopsys:~# ubus -v list usp
-'usp' @5914738c
-        "get":{"path":"String"}
-        "set":{"path":"String","value":"String","values":"Table"}
-        "operate":{"path":"String","action":"String","input":"Table"}
-        "add_object":{"path":"String"}
-        "del_object":{"path":"String"}
+'usp' @fd7d6f13
+        "get":{"path":"String","proto":"String"}
+        "set":{"path":"String","value":"String","values":"Table","proto":"String"}
+        "operate":{"path":"String","action":"String","input":"Table","proto":"String"}
+        "add_object":{"path":"String","proto":"String"}
+        "del_object":{"path":"String","proto":"String"}
+        "object_names":{"path":"String","proto":"String"}
+        "instances":{"path":"String","proto":"String"}
 root@iopsys:~#
 root@iopsys:~# ubus -v list usp.raw
-'usp.raw' @c2aec62b
-        "get":{"path":"String"}
-        "set":{"path":"String","value":"String","values":"Table"}
-        "operate":{"path":"String","action":"String","input":"Table"}
-        "add_object":{"path":"String"}
-        "del_object":{"path":"String"}
+'usp.raw' @97a67525
+        "get":{"path":"String","proto":"String"}
+        "set":{"path":"String","value":"String","values":"Table","proto":"String"}
+        "operate":{"path":"String","action":"String","input":"Table","proto":"String"}
+        "add_object":{"path":"String","proto":"String"}
+        "del_object":{"path":"String","proto":"String"}
+        "object_names":{"path":"String","proto":"String"}
+        "instances":{"path":"String","proto":"String"}
 root@iopsys:~#
 ```
+> Note: `proto` in each method specify the datamodel prototype('cwmp', 'usp') to use, if not provided default datamodel will be used.
 
-The objects registered with the above namespaces can be called with apppriate parameters to perform a USP `Get/Set/Operate/Add Object/Delete Object` operation as below.
+The objects registered with the above namespaces can be called with appropriate parameters to perform a USP `Get/Set/Operate/Add Object/Delete Object` operation as below.
+
 To get the output in pretty format use `usp` ubus namespace:
 
-```
+```json
+root@iopsys:~# ubus call usp get '{"path":"Device.IP.Diagnostics.", "proto":"usp"}'
+{
+        "Diagnostics": {
+                "IPv4DownloadDiagnosticsSupported": true,
+                "IPv4PingSupported": true,
+                "IPv4ServerSelectionDiagnosticsSupported": true,
+                "IPv4TraceRouteSupported": true,
+                "IPv4UDPEchoDiagnosticsSupported": true,
+                "IPv4UploadDiagnosticsSupported": true,
+                "IPv6DownloadDiagnosticsSupported": true,
+                "IPv6PingSupported": true,
+                "IPv6ServerSelectionDiagnosticsSupported": true,
+                "IPv6TraceRouteSupported": true,
+                "IPv6UDPEchoDiagnosticsSupported": true,
+                "IPv6UploadDiagnosticsSupported": true,
+                "UDPEchoConfig": {
+                        "BytesReceived": 0,
+                        "BytesResponded": 0,
+                        "EchoPlusEnabled": false,
+                        "EchoPlusSupported": false,
+                        "Enable": false,
+                        "Interface": "",
+                        "PacketsReceived": 0,
+                        "PacketsResponded": 0,
+                        "SourceIPAddress": "",
+                        "TimeFirstPacketReceived": "0",
+                        "TimeLastPacketReceived": "0",
+                        "UDPPort": 0
+                }
+        }
+}
+root@iopsys:~#
+root@iopsys:~# ubus call usp get '{"path":"Device.IP.Diagnostics.", "proto":"cwmp"}'
+{
+        "Diagnostics": {
+                "DownloadDiagnostics": {
+                        "BOMTime": "0",
+                        "DSCP": 0,
+                        "DiagnosticsState": "None",
+                        "DownloadDiagnosticMaxConnections": 1,
+                        "DownloadTransports": "HTTP,FTP",
+                        "DownloadURL": "",
+                        "EOMTime": "0",
+                        "EnablePerConnectionResults": false,
+                        "EthernetPriority": 0,
+                        "Interface": "",
+                        "NumberOfConnections": 1,
+                        "PerConnectionResultNumberOfEntries": 0,
+                        "PeriodOfFullLoading": 0,
+                        "ProtocolVersion": "Any",
+                        "ROMTime": "0",
+                        "TCPOpenRequestTime": "0",
+                        "TCPOpenResponseTime": "0",
+                        "TestBytesReceived": 0,
+                        "TestBytesReceivedUnderFullLoading": 0,
+                        "TotalBytesReceived": 0,
+                        "TotalBytesReceivedUnderFullLoading": 0,
+                        "TotalBytesSent": 0,
+                        "TotalBytesSentUnderFullLoading": 0
+                },
+                "IPPing": {
+                        "AverageResponseTime": 0,
+                        "AverageResponseTimeDetailed": 0,
+                        "DSCP": 0,
+                        "DataBlockSize": 64,
+                        "DiagnosticsState": "None",
+                        "FailureCount": 0,
+                        "Host": "",
+                        "Interface": "",
+                        "MaximumResponseTime": 0,
+                        "MaximumResponseTimeDetailed": 0,
+                        "MinimumResponseTime": 0,
+                        "MinimumResponseTimeDetailed": 0,
+                        "NumberOfRepetitions": 3,
+                        "ProtocolVersion": "Any",
+                        "SuccessCount": 0,
+                        "Timeout": 1000
+                },
+                "IPv4DownloadDiagnosticsSupported": true,
+                "IPv4PingSupported": true,
+                "IPv4ServerSelectionDiagnosticsSupported": true,
+                "IPv4TraceRouteSupported": true,
+                "IPv4UDPEchoDiagnosticsSupported": true,
+                "IPv4UploadDiagnosticsSupported": true,
+                "IPv6DownloadDiagnosticsSupported": true,
+                "IPv6PingSupported": true,
+                "IPv6ServerSelectionDiagnosticsSupported": true,
+                "IPv6TraceRouteSupported": true,
+                "IPv6UDPEchoDiagnosticsSupported": true,
+                "IPv6UploadDiagnosticsSupported": true,
+                "ServerSelectionDiagnostics": {
+                        "AverageResponseTime": 0,
+                        "DiagnosticsState": "None",
+                        "FastestHost": "",
+                        "HostList": "",
+                        "Interface": "",
+                        "MaximumResponseTime": 0,
+                        "MinimumResponseTime": 0,
+                        "NumberOfRepetitions": 3,
+                        "Port": 0,
+                        "Protocol": "ICMP",
+                        "ProtocolVersion": "Any",
+                        "Timeout": 1000
+                },
+                "TraceRoute": {
+                        "DSCP": 0,
+                        "DataBlockSize": 38,
+                        "DiagnosticsState": "None",
+                        "Host": "",
+                        "Interface": "",
+                        "MaxHopCount": 30,
+                        "NumberOfTries": 3,
+                        "ProtocolVersion": "Any",
+                        "ResponseTime": 0,
+                        "RouteHopsNumberOfEntries": 0,
+                        "Timeout": 5000
+                },
+                "UDPEchoConfig": {
+                        "BytesReceived": 0,
+                        "BytesResponded": 0,
+                        "EchoPlusEnabled": false,
+                        "EchoPlusSupported": false,
+                        "Enable": false,
+                        "Interface": "",
+                        "PacketsReceived": 0,
+                        "PacketsResponded": 0,
+                        "SourceIPAddress": "",
+                        "TimeFirstPacketReceived": "0",
+                        "TimeLastPacketReceived": "0",
+                        "UDPPort": 0
+                },
+                "UDPEchoDiagnostics": {
+                        "AverageResponseTime": 0,
+                        "DSCP": 0,
+                        "DataBlockSize": 24,
+                        "DiagnosticsState": "None",
+                        "FailureCount": 0,
+                        "Host": "",
+                        "InterTransmissionTime": 1000,
+                        "Interface": "",
+                        "MaximumResponseTime": 0,
+                        "MinimumResponseTime": 0,
+                        "NumberOfRepetitions": 1,
+                        "Port": 0,
+                        "ProtocolVersion": "Any",
+                        "SuccessCount": 0,
+                        "Timeout": 5000
+                },
+                "UploadDiagnostics": {
+                        "BOMTime": "0",
+                        "DSCP": 0,
+                        "DiagnosticsState": "None",
+                        "EOMTime": "0",
+                        "EnablePerConnectionResults": false,
+                        "EthernetPriority": 0,
+                        "Interface": "",
+                        "NumberOfConnections": 1,
+                        "PerConnectionResultNumberOfEntries": 0,
+                        "PeriodOfFullLoading": 0,
+                        "ProtocolVersion": "Any",
+                        "ROMTime": "0",
+                        "TCPOpenRequestTime": "0",
+                        "TCPOpenResponseTime": "0",
+                        "TestBytesSent": 0,
+                        "TestBytesSentUnderFullLoading": 0,
+                        "TestFileLength": 0,
+                        "TotalBytesReceived": 0,
+                        "TotalBytesReceivedUnderFullLoading": 0,
+                        "TotalBytesSent": 0,
+                        "TotalBytesSentUnderFullLoading": 0,
+                        "UploadTransports": "HTTP,FTP",
+                        "UploadURL": ""
+                }
+        }
+}
+root@iopsys:~#
 root@iopsys:~# ubus call usp get '{"path":"Device.Users."}'
 {
         "Users": {
@@ -82,7 +264,7 @@ root@iopsys:~# ubus call usp get '{"path":"Device.Users."}'
 }
 ```
 To get the output in raw format use `usp.raw` ubus namespace:
-```
+```json
 root@iopsys:~# ubus call usp.raw get '{"path":"Device.Users."}'
 {
         "parameters": [
@@ -191,7 +373,7 @@ Ex:
 
  - When Granularity is set to 1, exposed ubus namespaces are
 
-```
+```json
 root@iopsys:~# ubus list|grep usp
 usp
 usp.Device
@@ -200,7 +382,7 @@ usp.raw
 
  - When Granularity is set to 2, exposed ubus namespaces are
 
-```
+```json
 root@iopsys:~# ubus list|grep usp
 usp
 usp.Device
@@ -246,18 +428,20 @@ usp.raw
 
 These granular ubus objects provides the same functionality as of `usp` ubus namespace
 
-```
+```json
 root@iopsys:~# ubus -v list usp.Device.WiFi
 'usp.Device.WiFi' @69650977
-        "get":{"path":"String"}
-        "set":{"path":"String","value":"String","values":"Table"}
-        "operate":{"path":"String","action":"String","input":"Table"}
-        "add_object":{"path":"String"}
-        "del_object":{"path":"String"}
+        "get":{"path":"String","proto":"String"}
+        "set":{"path":"String","value":"String","values":"Table","proto":"String"}
+        "operate":{"path":"String","action":"String","input":"Table","proto":"String"}
+        "add_object":{"path":"String","proto":"String"}
+        "del_object":{"path":"String","proto":"String"}
+        "object_names":{"path":"String","proto":"String"}
+        "instances":{"path":"String","proto":"String"}
 ```
 
 Registered method can be called with appropriate parameters, like:
-```
+```json
 root@iopsys:~# ubus call usp.Device get '{"path":"Users."}'
 {
         "Users": {
@@ -294,7 +478,7 @@ root@iopsys:~# ubus call usp.Device get '{"path":"Users."}'
 
 ### More example ###
 
-```
+```json
 root@iopsys:~# ubus call usp get '{"path":"Device.WiFi.SSID.*.SSID"}'
 {
         "SSID": [
@@ -485,12 +669,12 @@ uspd internally uses libbbfdm to get the datamodel objects. On startup it parses
 
 When a ubus method is called it first checks the `path` parameter to identify if it has special USP syntax, if present it parses and determine the correct objects from libbbfdm, then proceeds with the `Get/Set/Operate/Add/Del` operation on the quilified objects.
 
-So, uspd search for `[[+*]+` in path expression, if it matches then segments the path and get the schema from libbbfdm and store it in a linklist, then it proceeds with the next segment to filter out the unneeded schema paths. It keeps on doing so till all the expressions are solved and it finally left with qualified objects.
+So, `uspd` search for `[[+*]+` in path expression, if it matches then segments the path and get the schema from `libbbfdm` and store it in a link-list, then it proceeds with the next segment to filter out the unneeded schema paths. It keeps on doing so till all the expressions are solved and it finally left with qualified objects.
 Once all the expressions are solved, it starts getting the values for qualified objects and store it in a `stack` to print the output in pretty format.
 
 For operate command, it solve the path expression and then call `bbf_operate` from `libbbfdm` to execute the operate command.
 
-uspd uses `dm_entry_param_method` API from `libbbfdm` to get the device tree schema and it's values.
+`uspd` uses `dm_entry_param_method` API from `libbbfdm` to get the device tree schema and it's values.
 
 In short, it covers/supports the new syntax introduced in `TR-369` by using the existing datamodel available with libbbfdm.
 

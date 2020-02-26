@@ -652,6 +652,35 @@ root@iopsys:~# ubus call usp operate '{"path":"Device.IP.Interface.[Name==\"wan\
         "status": true
 }
 
+
+USP Instances method returns the registered instances.
+root@iopsys:~# ubus call usp instances '{"path":"Device.IP.Interface.", "proto":"usp"}'
+{
+        "parameters": [
+                {
+                        "parameter": "Device.IP.Interface.1."
+                },
+                {
+                        "parameter": "Device.IP.Interface.1.IPv4Address.1."
+                },
+                {
+                        "parameter": "Device.IP.Interface.2."
+                },
+                {
+                        "parameter": "Device.IP.Interface.3."
+                },
+                {
+                        "parameter": "Device.IP.Interface.3.IPv4Address.1."
+                },
+                {
+                        "parameter": "Device.IP.Interface.3.IPv6Address.1."
+                },
+                {
+                        "parameter": "Device.IP.Interface.3.IPv6Prefix.1."
+                }
+        ]
+}
+
 ```
 
 ## Configuration File ##

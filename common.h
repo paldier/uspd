@@ -32,6 +32,7 @@ bool bbf_set_value(struct blob_buf *bb, char *path, char *value);
 bool bbf_get_value(char *path, bool fill, char *query_path);
 bool bbf_get_name(char *path);
 bool bbf_get_value_raw(char *path, struct blob_buf *bb);
+void bbf_get_value_blob(char *path, struct blob_buf *bb);
 bool bbf_get_inst_name_raw(char *path, struct blob_buf *bb);
 bool bbf_get_name_raw(char *path, struct blob_buf *bb);
 bool get_granular_obj_list(char *path);
@@ -77,5 +78,7 @@ do { \
 do { \
 	print_warning("[%s:%d] " fmt, __func__, __LINE__, ##args); \
 } while (0)
+
+#define __unused __attribute__((unused))
 
 #endif /* COMMON_H */

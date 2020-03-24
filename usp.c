@@ -69,6 +69,12 @@ static const struct blobmsg_policy dm_get_policy[__DM_MAX] = {
 	[DMPATH_PROTO] = { .name = "proto", .type = BLOBMSG_TYPE_STRING }
 };
 
+static const struct blobmsg_policy dm_get_safe_policy[__DM_MAX] = {
+	[DMPATH_NAME] = { .name = "paths", .type = BLOBMSG_TYPE_ARRAY },
+	[DMPATH_PROTO] = { .name = "proto", .type = BLOBMSG_TYPE_STRING }
+};
+
+
 static void set_bbf_data_type(struct blob_attr *proto)
 {
 	int type;
@@ -87,6 +93,49 @@ static void set_bbf_data_type(struct blob_attr *proto)
 	}
 
 	set_bbfdatamodel_type(type);
+}
+
+static int usp_get_safe(struct ubus_context *ctx,
+			__unused struct ubus_object *obj,
+			struct ubus_request_data *req,
+			__unused const char *method,
+			struct blob_attr *msg)
+{
+	struct blob_buf bb = {};
+	struct blob_attr *tb[__DM_MAX];
+	struct blob_attr *paths;
+	struct blob_attr *path;
+	void *a;
+	size_t rem;
+	const int raw = !strcmp(obj->name, RAWUSP);
+
+	blobmsg_parse(dm_get_safe_policy, __DM_MAX, tb, blob_data(msg), blob_len(msg));
+
+	paths = tb[DMPATH_NAME];
+	if (paths == NULL)
+		return UBUS_STATUS_INVALID_ARGUMENT;
+
+	set_bbf_data_type(tb[DMPATH_PROTO]);
+
+	blob_buf_init(&bb, 0);
+
+	if (raw)
+		a = blobmsg_open_array(&bb, "parameters");
+
+	blobmsg_for_each_attr(path, paths, rem) {
+		char *path_str = blobmsg_get_string(path);
+
+		if (raw)
+			bbf_get_value_raw(path_str, &bb);
+		else
+			bbf_get_value_blob(path_str, &bb);
+	}
+
+	if (raw)
+		blobmsg_close_array(&bb, a);
+
+	ubus_send_reply(ctx, req, bb.head);
+	return 0;
 }
 
 static int usp_get(struct ubus_context *ctx, struct ubus_object *obj,
@@ -464,6 +513,7 @@ int usp_operate(struct ubus_context *ctx, struct ubus_object *obj,
 
 static struct ubus_method usp_methods[] = {
 	UBUS_METHOD("get", usp_get, dm_get_policy),
+	UBUS_METHOD("get_safe", usp_get_safe, dm_get_safe_policy),
 	UBUS_METHOD("set", usp_set, dm_set_policy),
 	UBUS_METHOD("operate", usp_operate, dm_operate_policy),
 	UBUS_METHOD("add_object", usp_add, dm_get_policy),

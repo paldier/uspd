@@ -722,6 +722,31 @@ bool bbf_get_value(char *path, bool fill, char *query_path) {
 	return true;
 }
 
+void bbf_get_value_blob(char *path, struct blob_buf *bb)
+{
+	struct dmctx dm_ctx = {0};
+	struct dm_parameter *n;
+	size_t plen = strlen(path);
+
+	bbf_init(&dm_ctx, path);
+	if(bbf_get(CMD_GET_VALUE, path, &dm_ctx, "true")) {
+		void *t = NULL;
+		size_t poff = 0;
+
+		if (path[plen - 1] == '.') {
+			t = blobmsg_open_table(bb, path);
+			poff = plen;
+		}
+
+		list_for_each_entry(n, &dm_ctx.list_parameter, list)
+			blobmsg_add_string(bb, n->name + poff,  n->data);
+
+		if (t)
+			blobmsg_close_table(bb, t);
+	}
+	bbf_cleanup(&dm_ctx);
+}
+
 bool bbf_get_value_raw(char *path, struct blob_buf *bb) {
 	struct dmctx dm_ctx = {0};
 	struct dm_parameter *n;

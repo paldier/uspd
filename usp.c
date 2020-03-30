@@ -419,6 +419,7 @@ static int usp_del(struct ubus_context *ctx, struct ubus_object *obj,
 		del_object(&bb, p->ref_path, pkey);
 		p = p->next;
 	}
+	deleteList();
 
 	ubus_send_reply(ctx, req, bb.head);
 	blob_buf_free(&bb);

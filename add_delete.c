@@ -22,13 +22,19 @@
 
 #include "common.h"
 
-void add_object(struct blob_buf *bb, char *path) {
+void add_object(struct blob_buf *bb, char *path, const char *pkey)
+{
 	struct dmctx dm_ctx = {0};
 	struct dmctx *ctx = &dm_ctx;
 	uint32_t fault = 0;
+
 	INFO("Req to add object |%s|", path);
 	bbf_init(&dm_ctx, path);
-	fault = (uint32_t)dm_entry_param_method(&dm_ctx, CMD_ADD_OBJECT, path, "true", NULL);
+
+	if (pkey == NULL || pkey[0] == 0)
+		pkey = "true";
+
+	fault = (uint32_t)dm_entry_param_method(&dm_ctx, CMD_ADD_OBJECT, path, (char *)pkey, NULL);
 
 	if (fault) {
 		blobmsg_add_u32(bb, "fault", fault);
@@ -41,18 +47,24 @@ void add_object(struct blob_buf *bb, char *path) {
 			blobmsg_add_u8(bb, "status", 0);
 			blobmsg_add_u32(bb, "fault", FAULT_9002);
 		}
-	
+
 		bbf_apply_end_session();
 		dm_entry_restart_services();
 	}
 	bbf_cleanup(&dm_ctx);
 }
 
-void del_object(struct blob_buf *bb, char *path) {
+void del_object(struct blob_buf *bb, char *path, const char *pkey)
+{
 	struct dmctx dm_ctx = {0};
 	uint32_t fault = 0;
+
 	bbf_init(&dm_ctx, path);
-	fault = (uint32_t)dm_entry_param_method(&dm_ctx, CMD_DEL_OBJECT, path, "true", NULL);
+
+	if (pkey == NULL || pkey[0] == 0)
+		pkey = "true";
+
+	fault = (uint32_t)dm_entry_param_method(&dm_ctx, CMD_DEL_OBJECT, path, (char *)pkey, NULL);
 	if (fault) {
 		blobmsg_add_u8(bb, "status", 0);
 		blobmsg_add_u32(bb, "fault", fault);

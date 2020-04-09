@@ -306,7 +306,14 @@ static void add_data_blob(struct blob_buf *bb, char *param, char *value, char *t
 	} else if (is_str_eq(type, "xsd:long")) {
 		blobmsg_add_double(bb, param, atol(value));
 	} else if (is_str_eq(type, "xsd:boolean")) {
-		blobmsg_add_u8(bb, param, atoi(value));
+		if (0 == strncasecmp(value, "true", 4) ||
+		    '1' == value[0] ||
+		    0 == strncasecmp(value, "on", 2) ||
+		    0 == strncasecmp(value, "yes", 3) ||
+		    0 == strncasecmp(value, "enabled", 7))
+			blobmsg_add_u8(bb, param, true);
+		else
+			blobmsg_add_u8(bb, param, false);
 	} else { //"xsd:hexbin" "xsd:dateTime" "xsd:string"
 		blobmsg_add_string(bb, param, value);
 	}

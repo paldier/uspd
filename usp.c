@@ -165,10 +165,13 @@ static int usp_get_safe(struct ubus_context *ctx,
 	blobmsg_for_each_attr(path, paths, rem) {
 		char *path_str = blobmsg_get_string(path);
 
-		if (raw)
-			bbf_get_value_raw(path_str, &bb);
-		else
-			bbf_get_value_blob(path_str, &bb);
+		if (raw) {
+			if (bbf_get_value_raw(path_str, &bb))
+				break;
+		} else {
+			if (bbf_get_value_blob(path_str, &bb))
+				break;
+		}
 	}
 
 	if (raw)

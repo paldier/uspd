@@ -28,13 +28,13 @@ typedef struct pathnode {
 void bbf_init(struct dmctx *dm_ctx, char *path);
 void bbf_cleanup(struct dmctx *dm_ctx);
 char *bbf_get_value_by_id(char *id);
-bool bbf_set_value(struct blob_buf *bb, char *path, char *value);
-bool bbf_get_value(char *path, bool fill, char *query_path);
+int bbf_set_value(struct blob_buf *bb, char *path, char *value);
+int bbf_get_value(char *path, bool fill, char *query_path, struct blob_buf *bb);
 bool bbf_get_name(char *path);
-bool bbf_get_value_raw(char *path, struct blob_buf *bb);
-void bbf_get_value_blob(char *path, struct blob_buf *bb);
-bool bbf_get_inst_name_raw(char *path, struct blob_buf *bb);
-bool bbf_get_name_raw(char *path, struct blob_buf *bb);
+int bbf_get_value_raw(char *path, struct blob_buf *bb);
+int bbf_get_value_blob(char *path, struct blob_buf *bb);
+int bbf_get_inst_name_raw(char *path, struct blob_buf *bb);
+int bbf_get_name_raw(char *path, struct blob_buf *bb);
 bool get_granular_obj_list(char *path);
 int bbf_operate(struct dmctx *dm_ctx, char *path, char *input_params);
 

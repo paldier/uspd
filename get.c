@@ -28,7 +28,8 @@ void create_response(struct blob_buf *bb, char *qpath) {
 	pathnode *p=head;
 	p = head;
 	while(p!=NULL) {
-		bbf_get_value(p->ref_path, true, qpath);
+		if (bbf_get_value(p->ref_path, true, qpath, bb))
+			break;
 		p = p->next;
 	}
 	deleteList();
@@ -39,7 +40,8 @@ void create_raw_response(struct blob_buf *bb) {
 	pathnode *p=head;
 	void *array = blobmsg_open_array(bb, "parameters");
 	while(p!=NULL) {
-		bbf_get_value_raw(p->ref_path, bb);
+		if (bbf_get_value_raw(p->ref_path, bb))
+			break;
 		p = p->next;
 	}
 	blobmsg_close_array(bb, array);
@@ -51,7 +53,8 @@ void create_inst_name_response(struct blob_buf *bb) {
 	pathnode *p=head;
 	void *array = blobmsg_open_array(bb, "parameters");
 	while(p!=NULL) {
-		bbf_get_inst_name_raw(p->ref_path, bb);
+		if (bbf_get_inst_name_raw(p->ref_path, bb))
+			break;
 		p = p->next;
 	}
 	blobmsg_close_array(bb, array);
@@ -62,7 +65,8 @@ void create_name_response(struct blob_buf *bb) {
 	pathnode *p=head;
 	void *array = blobmsg_open_array(bb, "parameters");
 	while(p!=NULL) {
-		bbf_get_name_raw(p->ref_path, bb);
+		if (bbf_get_name_raw(p->ref_path, bb))
+			break;
 		p = p->next;
 	}
 	blobmsg_close_array(bb, array);

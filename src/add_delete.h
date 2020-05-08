@@ -2,4 +2,5 @@
 #define ADD_DEL_H
 void add_object(struct blob_buf *bb, char *path, const char *pkey);
 void del_object(struct blob_buf *bb, char *path, const char *pkey);
+void create_del_response(struct blob_buf *bb, char *path, const char *pkey);
 #endif /* ADD_DEL_H */

@@ -121,9 +121,9 @@ static void set_bbf_data_type(struct blob_attr *proto)
 	if (proto) {
 		const char *val = blobmsg_get_string(proto);
 
-		if (!strcmp("cwmp", val))
+		if (is_str_eq("cwmp", val))
 			type = BBFDM_CWMP;
-		else if (!strcmp("usp", val))
+		else if (is_str_eq("usp", val))
 			type = BBFDM_USP;
 		else
 			type = BBFDM_BOTH;
@@ -146,7 +146,7 @@ static int usp_get_safe(struct ubus_context *ctx,
 	struct blob_attr *path;
 	void *a;
 	size_t rem;
-	const int raw = !strcmp(obj->name, RAWUSP);
+	const int raw = is_str_eq(obj->name, RAWUSP);
 
 	blobmsg_parse(dm_get_safe_policy, __DM_GET_SAFE_MAX,
 			tb, blob_data(msg), blob_len(msg));
@@ -178,56 +178,7 @@ static int usp_get_safe(struct ubus_context *ctx,
 	return 0;
 }
 
-static int usp_get(struct ubus_context *ctx, struct ubus_object *obj,
-		struct ubus_request_data *req, const char *method,
-		struct blob_attr *msg)
-{
-	struct blob_attr *tb[__DM_GET_MAX];
-	char path[PATH_MAX];
-	struct blob_buf bb = {};
-
-	INFO("Entry method|%s| ubus name|%s|", method, obj->name);
-
-	if(blobmsg_parse(dm_get_policy, __DM_GET_MAX, tb, blob_data(msg), blob_len(msg))) {
-		ERR("Failed to parse blob");
-		return UBUS_STATUS_UNKNOWN_ERROR;
-	}
-
-	if (!(tb[DM_GET_PATH]))
-		return UBUS_STATUS_INVALID_ARGUMENT;
-
-	if (!is_sanitized(blobmsg_data(tb[DM_GET_PATH]))) {
-		ERR("Invalid option |%s|", (char *)blobmsg_data(tb[DM_GET_PATH]));
-		return UBUS_STATUS_INVALID_ARGUMENT;
-	}
-
-	set_bbf_data_type(tb[DM_GET_PROTO]);
-
-	// In case of granular objects, Concatenate relative path to ubus object
-	if ((0 != strcmp(obj->name, USP)) && (0 != strcmp(obj->name, RAWUSP))) {
-		snprintf(path, NAME_MAX, "%s.%s", obj->name+strlen(USP_GRA), \
-			(char *)blobmsg_data(tb[DM_GET_PATH]));
-	} else {
-		strcpy(path, blobmsg_data(tb[DM_GET_PATH]));
-	}
-
-	INFO("%s path |%s|", __func__, path);
-	filter_results(path, 0, strlen(path));
-	blob_buf_init(&bb, 0);
-
-	if(is_str_eq(obj->name, RAWUSP)) {
-		create_raw_response(&bb);
-	} else {
-		create_response(&bb, path);
-	}
-
-	ubus_send_reply(ctx, req, bb.head);
-	blob_buf_free(&bb);
-
-	return 0;
-}
-
-static int usp_add(struct ubus_context *ctx, struct ubus_object *obj,
+int usp_add_del_handler(struct ubus_context *ctx, struct ubus_object *obj,
 		struct ubus_request_data *req, const char *method,
 		struct blob_attr *msg)
 {
@@ -236,6 +187,8 @@ static int usp_add(struct ubus_context *ctx, struct ubus_object *obj,
 	const char *pkey = NULL;
 	struct blob_buf bb = {};
 	size_t path_len;
+	char *blob_msg = NULL;
+	size_t  blog_msg_len=0;
 
 	INFO("Entry method|%s| ubus name|%s|", method, obj->name);
 
@@ -259,7 +212,9 @@ static int usp_add(struct ubus_context *ctx, struct ubus_object *obj,
 		snprintf(path, NAME_MAX, "%s.%s", obj->name+strlen(USP_GRA), \
 			(char *)blobmsg_data(tb[DM_ADD_PATH]));
 	} else {
-		strcpy(path, blobmsg_data(tb[DM_ADD_PATH]));
+		blob_msg = blobmsg_data(tb[DM_ADD_PATH]);
+		blog_msg_len = strlen(blob_msg)+1;
+		strncpy(path, blob_msg, blog_msg_len);
 	}
 
 	path_len = strlen(path);
@@ -273,7 +228,14 @@ static int usp_add(struct ubus_context *ctx, struct ubus_object *obj,
 		pkey = blobmsg_get_string(tb[DM_ADD_PARAMETER_KEY]);
 
 	blob_buf_init(&bb, 0);
-	add_object(&bb, path, pkey);
+
+	if (is_str_eq(method, "add_object")) {
+		add_object(&bb, path, pkey);
+	} else if (is_str_eq(method, "del_object")) {
+		create_del_response(&bb, path, pkey);
+	} else {
+		ERR("method(%s) not defined", method);
+	}
 
 	ubus_send_reply(ctx, req, bb.head);
 	blob_buf_free(&bb);
@@ -281,13 +243,15 @@ static int usp_add(struct ubus_context *ctx, struct ubus_object *obj,
 	return 0;
 }
 
-static int usp_object_instances(struct ubus_context *ctx, struct ubus_object *obj,
+int usp_get_handler(struct ubus_context *ctx, struct ubus_object *obj,
 		struct ubus_request_data *req, const char *method,
 		struct blob_attr *msg)
 {
 	struct blob_attr *tb[__DM_GET_MAX];
 	char path[PATH_MAX];
 	struct blob_buf bb = {};
+	char *blob_msg = NULL;
+	size_t  blog_msg_len=0;
 
 	INFO("Entry method|%s| ubus name|%s|", method, obj->name);
 
@@ -311,115 +275,27 @@ static int usp_object_instances(struct ubus_context *ctx, struct ubus_object *ob
 		snprintf(path, NAME_MAX, "%s.%s", obj->name+strlen(USP_GRA), \
 			(char *)blobmsg_data(tb[DM_GET_PATH]));
 	} else {
-		strcpy(path, blobmsg_data(tb[DM_GET_PATH]));
+		blob_msg = blobmsg_data(tb[DM_GET_PATH]);
+		blog_msg_len = strlen(blob_msg)+1;
+		strncpy(path, blob_msg, blog_msg_len);
 	}
 
 	filter_results(path, 0, strlen(path));
 	blob_buf_init(&bb, 0);
-	create_inst_name_response(&bb);
 
-	ubus_send_reply(ctx, req, bb.head);
-	blob_buf_free(&bb);
-
-	return 0;
-}
-
-static int usp_object_name(struct ubus_context *ctx, struct ubus_object *obj,
-		struct ubus_request_data *req, const char *method,
-		struct blob_attr *msg)
-{
-	struct blob_attr *tb[__DM_GET_MAX];
-	char path[PATH_MAX];
-	struct blob_buf bb = {};
-
-	INFO("Entry method|%s| ubus name|%s|", method, obj->name);
-
-	if(blobmsg_parse(dm_get_policy, __DM_GET_MAX, tb, blob_data(msg), blob_len(msg))) {
-		ERR("Failed to parse blob");
-		return UBUS_STATUS_UNKNOWN_ERROR;
-	}
-
-	if (!(tb[DM_GET_PATH]))
-		return UBUS_STATUS_INVALID_ARGUMENT;
-
-	if (!is_sanitized(blobmsg_data(tb[DM_GET_PATH]))) {
-		ERR("Invalid option |%s|", (char *)blobmsg_data(tb[DM_GET_PATH]));
-		return UBUS_STATUS_INVALID_ARGUMENT;
-	}
-
-	set_bbf_data_type(tb[DM_GET_PROTO]);
-
-	// In case of granular objects, Concatenate relative path to ubus object
-	if ((0 != strcmp(obj->name, USP)) && (0 != strcmp(obj->name, RAWUSP))) {
-		snprintf(path, NAME_MAX, "%s.%s", obj->name+strlen(USP_GRA), \
-			(char *)blobmsg_data(tb[DM_GET_PATH]));
+	if (is_str_eq(method, "get")) {
+		if(is_str_eq(obj->name, RAWUSP)) {
+			create_raw_response(&bb);
+		} else {
+			create_response(&bb, path);
+		}
+	} else if (is_str_eq(method, "object_names")) {
+		create_name_response(&bb);
+	} else if (is_str_eq(method, "instances")) {
+		create_inst_name_response(&bb);
 	} else {
-		strcpy(path, blobmsg_data(tb[DM_GET_PATH]));
+		ERR("method(%s) not defined", method);
 	}
-
-	filter_results(path, 0, strlen(path));
-	blob_buf_init(&bb, 0);
-	create_name_response(&bb);
-
-	ubus_send_reply(ctx, req, bb.head);
-	blob_buf_free(&bb);
-
-	return 0;
-}
-
-static int usp_del(struct ubus_context *ctx, struct ubus_object *obj,
-		struct ubus_request_data *req, const char *method,
-		struct blob_attr *msg)
-{
-	struct blob_attr *tb[__DM_ADD_MAX];
-	char path[PATH_MAX];
-	struct blob_buf bb = {};
-	size_t path_len;
-	const char *pkey = NULL;
-
-	INFO("Entry method|%s| ubus name|%s|", method, obj->name);
-
-	if(blobmsg_parse(dm_add_policy, __DM_ADD_MAX, tb, blob_data(msg), blob_len(msg))) {
-		ERR("Failed to parse blob");
-		return UBUS_STATUS_UNKNOWN_ERROR;
-	}
-
-	if (!(tb[DM_ADD_PATH]))
-		return UBUS_STATUS_INVALID_ARGUMENT;
-
-	if (!is_sanitized(blobmsg_data(tb[DM_GET_PATH]))) {
-		ERR("Invalid option |%s|", (char *)blobmsg_data(tb[DM_ADD_PATH]));
-		return UBUS_STATUS_INVALID_ARGUMENT;
-	}
-
-	set_bbf_data_type(tb[DM_ADD_PROTO]);
-
-	// In case of granular objects, Concatenate relative path to ubus object
-	if ((0 != strcmp(obj->name, USP)) && (0 != strcmp(obj->name, RAWUSP))) {
-		snprintf(path, NAME_MAX, "%s.%s", obj->name+strlen(USP_GRA), \
-			(char *)blobmsg_data(tb[DM_ADD_PATH]));
-	} else {
-		strcpy(path, blobmsg_data(tb[DM_ADD_PATH]));
-	}
-
-	path_len = strlen(path);
-	// Path is invalid if the path have leave elements
-	// Need to add . as obuspa trims last . from path
-	if(path[path_len-1] != DELIM) {
-		strcat(path, ".");
-	}
-
-	if (tb[DM_ADD_PARAMETER_KEY])
-		pkey = blobmsg_get_string(tb[DM_ADD_PARAMETER_KEY]);
-
-	blob_buf_init(&bb, 0);
-	filter_results(path, 0, strlen(path));
-	pathnode *p=head;
-	while(p) {
-		del_object(&bb, p->ref_path, pkey);
-		p = p->next;
-	}
-	deleteList();
 
 	ubus_send_reply(ctx, req, bb.head);
 	blob_buf_free(&bb);
@@ -434,6 +310,9 @@ int usp_set(struct ubus_context *ctx, struct ubus_object *obj,
 	INFO("Entry method|%s| ubus name|%s|", method, obj->name);
 	struct blob_attr *tb[__DM_SET_MAX] = {NULL};
 	char path[PATH_MAX]={'\0'}, value[NAME_MAX]={'\0'};
+	char *blob_msg = NULL;
+	size_t  blog_msg_len=0;
+	void *array = NULL;
 
 	if(blobmsg_parse(dm_set_policy, __DM_SET_MAX, tb, blob_data(msg), blob_len(msg))) {
 		ERR("Failed to parse blob");
@@ -463,27 +342,26 @@ int usp_set(struct ubus_context *ctx, struct ubus_object *obj,
 		snprintf(path, NAME_MAX, "%s.%s", obj->name+strlen(USP_GRA), \
 			 (char *)blobmsg_data(tb[DM_SET_PATH]));
 	} else {
-		strcpy(path, blobmsg_data(tb[DM_SET_PATH]));
+		blob_msg = blobmsg_data(tb[DM_SET_PATH]);
+		blog_msg_len = strlen(blob_msg)+1;
+		strncpy(path, blob_msg, blog_msg_len);
 	}
 
 	filter_results(path, 0, strlen(path));
 
-	void *array = NULL;
-	if(is_str_eq(obj->name, RAWUSP)) {
-		array = blobmsg_open_array(&bb, "parameters");
-	}
+	array = blobmsg_open_array(&bb, "parameters");
 
 	if (tb[DM_SET_VALUE]) {
-		strcpy(value, blobmsg_data(tb[DM_SET_VALUE]));
+		blob_msg = blobmsg_data(tb[DM_SET_VALUE]);
+		blog_msg_len = strlen(blob_msg)+1;
+		strncpy(value, blob_msg, blog_msg_len);
 		create_set_response(&bb, value);
 	}
 	if(tb[DM_SET_VALUE_TABLE]) {
 		set_multiple_values(&bb, tb[DM_SET_VALUE_TABLE]);
 	}
 
-	if(is_str_eq(obj->name, RAWUSP)) {
-		blobmsg_close_array(&bb, array);
-	}
+	blobmsg_close_array(&bb, array);
 	ubus_send_reply(ctx, req, bb.head);
 	blob_buf_free(&bb);
 
@@ -508,6 +386,8 @@ int usp_operate(struct ubus_context *ctx, struct ubus_object *obj,
 	char path[PATH_MAX]={'\0'};
 	char cmd[NAME_MAX]={'\0'};
 	INFO("Entry method|%s| ubus name|%s|", method, obj->name);
+	char *blob_msg = NULL;
+	size_t  blog_msg_len=0;
 
 	if(blobmsg_parse(dm_operate_policy, __DM_OPERATE_MAX, tb, blob_data(msg), blob_len(msg))) {
 		ERR("Failed to parse blob");
@@ -535,10 +415,13 @@ int usp_operate(struct ubus_context *ctx, struct ubus_object *obj,
 		snprintf(path, NAME_MAX, "%s.%s", obj->name+strlen(USP_GRA), \
 			 (char *)blobmsg_data(tb[DM_OPERATE_PATH]));
 	} else {
-		strcpy(path, blobmsg_data(tb[DM_OPERATE_PATH]));
+		blob_msg = blobmsg_data(tb[DM_OPERATE_PATH]);
+		blog_msg_len = strlen(blob_msg)+1;
+		strncpy(path, blob_msg, blog_msg_len);
 	}
-
-	strcpy(cmd, blobmsg_data(tb[DM_OPERATE_ACTION]));
+	blob_msg = blobmsg_data(tb[DM_OPERATE_ACTION]);
+	blog_msg_len = strlen(blob_msg)+1;
+	strncpy(cmd, blob_msg, blog_msg_len);
 
 	filter_results(path, 0, strlen(path));
 
@@ -554,14 +437,14 @@ int usp_operate(struct ubus_context *ctx, struct ubus_object *obj,
 }
 
 static struct ubus_method usp_methods[] = {
-	UBUS_METHOD("get", usp_get, dm_get_policy),
+	UBUS_METHOD("get", usp_get_handler, dm_get_policy),
 	UBUS_METHOD("get_safe", usp_get_safe, dm_get_safe_policy),
 	UBUS_METHOD("set", usp_set, dm_set_policy),
 	UBUS_METHOD("operate", usp_operate, dm_operate_policy),
-	UBUS_METHOD("add_object", usp_add, dm_add_policy),
-	UBUS_METHOD("del_object", usp_del, dm_add_policy),
-	UBUS_METHOD("object_names", usp_object_name, dm_get_policy),
-	UBUS_METHOD("instances", usp_object_instances, dm_get_policy),
+	UBUS_METHOD("add_object", usp_add_del_handler, dm_add_policy),
+	UBUS_METHOD("del_object", usp_add_del_handler, dm_add_policy),
+	UBUS_METHOD("object_names", usp_get_handler, dm_get_policy),
+	UBUS_METHOD("instances", usp_get_handler, dm_get_policy),
 };
 
 static struct ubus_object_type usp_type = UBUS_OBJECT_TYPE("usp", usp_methods);
@@ -623,7 +506,7 @@ static void add_granular_objects(struct ubus_context *ctx, int gn_level)
 	p = head;
 	while(p!=NULL) {
 		char obj_path[MAXNAMLEN]=USP_GRA;
-		strcat(obj_path,p->ref_path);
+		strncat(obj_path,p->ref_path,strlen(p->ref_path));
 
 		size_t len = strlen(obj_path);
 		if (obj_path[len-1] == DELIM)

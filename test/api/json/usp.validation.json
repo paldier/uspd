@@ -1,0 +1,69 @@
+{
+    "object": "usp",
+        "methods": [
+        {
+            "method": "get",
+            "args": {
+                "path": "Device.DeviceInfo.Manufacturer",
+                "proto": "usp"
+            },
+            "rc": 0
+        },
+        {
+            "method": "hello",
+            "rc": 3
+        },
+        {
+            "method": "instances",
+            "args": {
+                "path": "Device.Users.User",
+                "proto": "usp"
+            },
+            "rc": 0
+        },
+        {
+            "method": "set",
+            "args": {
+                "path": "Device.WiFi.SSID.1.SSID",
+                "value": "test-2g"
+            },
+            "rc": 0
+        },
+        {
+            "method": "add_object",
+            "args": {
+                "path": "Device.Users.User.",
+                "proto": "usp"
+            },
+            "rc": 0
+        },
+        {
+            "method": "del_object",
+            "args": {
+                "path": "Device.Users.User.2.",
+                "proto": "usp"
+            },
+            "rc": 0
+        },
+        {
+            "method": "object_names",
+            "args": {
+                "path": "Device.WiFi.SSID.1.",
+                "proto": "usp"
+            },
+            "rc": 0
+        },
+        {
+            "method": "operate",
+            "args": {
+                "path":"Device.IP.Diagnostics.",
+                "action":"IPPing",
+                "input":{
+                    "Host":"iopsys.eu"
+                }
+            },
+            "rc": 0
+        }
+    ]
+}
+

@@ -1,0 +1,375 @@
+{
+  "definitions": {
+    "path_t": {
+      "description": "Complete object element path as per TR181-2.13",
+      "type": "string",
+      "minLength": 6,
+      "maxLength": 256,
+      "pattern": "Device\\.(([a-zA-Z]+\\.)*(\\d\\.)?)*[a-zA-Z]*",
+      "examples": [
+        "Device.",
+        "Device.DeviceInfo.Manufacturer",
+        "Device.WiFi.SSID.1.",
+        "Device.WiFi."
+      ]
+    },
+    "query_path_t": {
+      "description": "Complete object element path as per TR181-2.13 and TR369",
+      "type": "string",
+      "minLength": 6,
+      "maxLength": 256,
+      "pattern": "Device\\.(([a-zA-Z]+\\.)*(\\[[a-zA-Z0-9-_+=!><&]*\\]|(\\d\\.)|\\*)?)*[a-zA-Z]*",
+      "examples": [
+        "Device.",
+        "Device.DeviceInfo.Manufacturer",
+        "Device.WiFi.SSID.[SSID==\"test_ssid\"].BSSID",
+        "Device.WiFi.SSID.*.BSSID",
+        "Device.WiFi.SSID.[SSID!=\"test_ssid\"&&Enable==1].BSSID",
+        "Device.WiFi."
+      ]
+    },
+    "instance_t": {
+      "description": "Multi object instances",
+      "type": "string",
+      "minLength": 6,
+      "maxLength": 256,
+      "pattern": "Device\\.(([a-zA-Z]+\\.)*(\\d\\.)?)*[a-zA-Z]*.\\d"
+    },
+    "proto_t": {
+      "type": "string",
+      "default": "both",
+      "pattern": "(usp|cwmp|both)"
+    },
+    "type_t": {
+      "type": "string",
+      "pattern": "xsd:(string|unsignedInt|int|unsignedLong|long|boolean|dateTime|hexBinary)"
+    },
+    "fault_t": {
+      "type": "integer",
+      "minimum": 9000,
+      "maximum": 9032
+    }
+  },
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://www.iopsys.eu/usp.raw.json",
+  "type": "object",
+  "title": "usp",
+  "object": "usp",
+  "additionalProperties": false,
+  "regex": true,
+  "properties": {
+
+    "get": {
+      "title": "Get handler",
+      "description": "Query the datamodel object",
+      "type": "object",
+      "required": [
+        "input"
+      ],
+      "properties": {
+        "input": {
+          "type": "object",
+          "required": [
+            "path"
+          ],
+          "properties": {
+            "path": {
+              "$ref": "#/definitions/query_path_t"
+            },
+            "proto": {
+              "$ref": "#/definitions/proto_t"
+            }
+          }
+        },
+        "output": {
+          "type": "object",
+          "properties": {},
+          "examples": [
+            "root@iopsys:/tmp# ubus call usp get '{\"path\":\"Device.Users.User.2.\"}'\n{\n\t\"User\": [\n\t\t{\n\t\t\t\"Alias\": \"\",\n\t\t\t\"Enable\": true,\n\t\t\t\"Language\": \"\",\n\t\t\t\"Password\": \"\",\n\t\t\t\"RemoteAccessCapable\": false,\n\t\t\t\"Username\": \"user_2\"\n\t\t}\n\t]\n}",
+            "root@iopsys:/tmp# ubus call usp get '{\"path\":\"Device.Users.\"}'\n{\n\t\"Users\": {\n\t\t\"User\": [\n\t\t\t{\n\t\t\t\t\"Alias\": \"\",\n\t\t\t\t\"Enable\": true,\n\t\t\t\t\"Language\": \"\",\n\t\t\t\t\"Password\": \"\",\n\t\t\t\t\"RemoteAccessCapable\": true,\n\t\t\t\t\"Username\": \"user\"\n\t\t\t},\n\t\t\t{\n\t\t\t\t\"Alias\": \"\",\n\t\t\t\t\"Enable\": true,\n\t\t\t\t\"Language\": \"\",\n\t\t\t\t\"Password\": \"\",\n\t\t\t\t\"RemoteAccessCapable\": false,\n\t\t\t\t\"Username\": \"user_2\"\n\t\t\t}\n\t\t],\n\t\t\"UserNumberOfEntries\": 2\n\t}\n}"
+          ]
+        }
+      }
+    },
+
+    "set": {
+      "title": "Set handler",
+      "description": "Set values of datamodel object element",
+      "type": "object",
+      "required": [
+        "input"
+      ],
+      "properties": {
+        "input": {
+          "type": "object",
+          "required": [
+            "path",
+            "value"
+          ],
+          "properties": {
+            "path": {
+              "$ref": "#/definitions/query_path_t"
+            },
+            "proto": {
+              "$ref": "#/definitions/proto_t"
+            },
+            "value": {
+              "description": "value of the object element provided in path, path should contains valid writable object element",
+              "type": "string",
+              "examples": [
+                "{\"path\":\"Device.WiFi.SSID.1.SSID\", \"value\":\"test_ssid\"}",
+                "{\"path\":\"Device.WiFi.SSID.2.Enable\", \"value\":\"true\"}",
+                "{\"path\":\"Device.WiFi.SSID.1.Enable\", \"value\":\"0\"}"
+              ],
+              "pattern": "[a-zA-Z]+"
+            },
+            "values": {
+              "description": "To set multiple values at once, path should be relative to object elements",
+              "examples": [
+                "{\"path\":\"Device.WiFi.SSID.1\", \"values\":{\".SSID\":\"test_ssid\",\".Name\":\"test_name\"}}",
+                "{\"path\":\"Device.WiFi.SSID.2\", \"values\":{\".SSID\":\"test_ssid\"}}"
+              ],
+              "type": "object",
+              "properties": {}
+            }
+          }
+        },
+        "output": {
+          "type": "object",
+          "required": [
+            "parameters"
+          ],
+          "properties": {
+            "parameters": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "path": {
+                    "$ref": "#/definitions/path_t"
+                  },
+                  "status": {
+                    "type": "boolean"
+                  },
+                  "fault": {
+                    "$ref": "#/definitions/fault_t"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "add_object": {
+      "title": "Add a new object instance",
+      "description": "Add a new object in multi instance object",
+      "type": "object",
+      "required": [
+        "input"
+      ],
+      "properties": {
+        "input": {
+          "type": "object",
+          "required": [
+            "path"
+          ],
+          "properties": {
+            "path": {
+              "$ref": "#/definitions/path_t"
+            },
+            "proto": {
+              "$ref": "#/definitions/proto_t"
+            }
+          }
+        },
+        "output": {
+          "type": "object",
+          "properties": {
+            "status": {
+              "type": "boolean"
+            },
+            "instance": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "fault": {
+              "$ref": "#/definitions/fault_t"
+            }
+          }
+        }
+      }
+    },
+    "del_object": {
+      "title": "Delete object instance",
+      "description": "Delete a object instance from multi instance object",
+      "type": "object",
+      "required": [
+        "input"
+      ],
+      "properties": {
+        "input": {
+          "type": "object",
+          "required": [
+            "path"
+          ],
+          "properties": {
+            "path": {
+              "$ref": "#/definitions/query_path_t"
+            },
+            "proto": {
+              "$ref": "#/definitions/proto_t"
+            }
+          }
+        },
+        "output": {
+          "type": "object",
+          "properties": {
+            "status": {
+              "type": "boolean"
+            },
+            "fault": {
+              "$ref": "#/definitions/fault_t"
+            }
+          }
+        }
+      }
+    },
+    "instances": {
+      "title": "Instance query handler",
+      "description": "Get the instances of multi object",
+      "type": "object",
+      "required": [
+        "input"
+      ],
+      "properties": {
+        "input": {
+          "type": "object",
+          "required": [
+            "path"
+          ],
+          "properties": {
+            "path": {
+              "$ref": "#/definitions/query_path_t"
+            },
+            "proto": {
+              "$ref": "#/definitions/proto_t"
+            }
+          }
+        },
+        "output": {
+          "type": "object",
+          "required": [
+            "parameters"
+          ],
+          "properties": {
+            "parameters": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "parameter": {
+                    "$ref": "#/definitions/instance_t"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "object_names": {
+      "title": "Get objects names",
+      "description": "Get names of all the objects below input object path",
+      "type": "object",
+      "required": [
+        "input"
+      ],
+      "properties": {
+        "input": {
+          "type": "object",
+          "required": [
+            "path"
+          ],
+          "properties": {
+            "path": {
+              "$ref": "#/definitions/query_path_t"
+            },
+            "proto": {
+              "$ref": "#/definitions/proto_t"
+            }
+          }
+        },
+        "output": {
+          "type": "object",
+          "required": [
+            "parameters"
+          ],
+          "properties": {
+            "parameters": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "parameter": {
+                    "$ref": "#/definitions/path_t"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "operate": {
+      "title": "Operate handler",
+      "description": "Operate on object element provided in path",
+      "type": "object",
+      "required": [
+        "input"
+      ],
+      "properties": {
+        "input": {
+          "type": "object",
+          "required": [
+            "path",
+            "action"
+          ],
+          "properties": {
+            "path": {
+              "$ref": "#/definitions/query_path_t"
+            },
+            "proto": {
+              "$ref": "#/definitions/proto_t"
+            },
+            "action": {
+              "description": "Opreate command as defined in TR-369, TR-181-2.13",
+              "type": "string",
+              "examples": [
+                "{\"path\":\"Device.WiFi.\", \"action\":\"Reset\\(\\)\"}"
+              ],
+              "pattern": "[a-zA-Z]+\\(\\)"
+            },
+            "input": {
+              "description": "Input arguments for the operate command as defined in TR-181-2.13",
+              "examples": [
+                "{\"path\":\"Device.IP.Diagnostics\", \"action\":\"IPPing\\(\\)\", \"input\":{\"Host\":\"iopsys.eu\"}}"
+              ],
+              "type": "object",
+              "properties": {}
+            }
+          }
+        },
+        "output": {
+          "description": "Output will have status for sync commands and for async commands parameters as defined in TR-181-2.13",
+          "type": "object",
+          "properties": {},
+          "examples": [
+            "{\n\t\"status\": true}",
+            "{\n\t\"AverageResponseTime\": \"0\",\n\t\"AverageResponseTimeDetailed\": \"130\",\n\t\"FailureCount\": \"0\",\n\t\"MaximumResponseTime\": \"0\",\n\t\"MaximumResponseTimeDetailed\": \"140\",\n\t\"MinimumResponseTime\": \"0\",\n\t\"MinimumResponseTimeDetailed\": \"120\",\n\t\"SuccessCount\": \"3\"}"
+          ]
+        }
+      }
+    }
+  }
+}

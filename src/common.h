@@ -15,8 +15,8 @@
 
 #include <libbbfdm/dmentry.h>
 #include <libbbfdm/dmbbfcommon.h>
+#include <libbbf_api/dmbbf.h>
 
-#define STRING_DEFAULT 256
 #define DELIM '.'
 
 typedef struct pathnode {

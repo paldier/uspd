@@ -28,6 +28,18 @@
 #define RESULT_STACK 15
 
 static unsigned char gLogLevel;
+
+const char *DMT_TYPE[] = {
+[DMT_STRING] = "xsd:string",
+[DMT_UNINT] = "xsd:unsignedInt",
+[DMT_INT] = "xsd:int",
+[DMT_UNLONG] = "xsd:unsignedLong",
+[DMT_LONG] = "xsd:long",
+[DMT_BOOL] = "xsd:boolean",
+[DMT_TIME] = "xsd:dateTime",
+[DMT_HEXBIN] = "xsd:hexBinary",
+};
+
 static bool is_node_instance(char *path);
 static bool is_leaf(char *path, char *);
 bool match(const char *string, const char *pattern);
@@ -146,6 +158,21 @@ bool top() {
 // Common utilities
 bool is_str_eq(const char *s1, const char *s2) {
 	if(0==strcmp(s1, s2))
+		return true;
+
+	return false;
+}
+
+static bool get_boolean_string(char *value)
+{
+	if (!value)
+		return false;
+
+	if (0 == strncasecmp(value, "true", 4) ||
+	    '1' == value[0] ||
+	    0 == strncasecmp(value, "on", 2) ||
+	    0 == strncasecmp(value, "yes", 3) ||
+	    0 == strncasecmp(value, "enabled", 7))
 		return true;
 
 	return false;
@@ -299,18 +326,14 @@ static void add_data_blob(struct blob_buf *bb, char *param, char *value, char *t
 	if(param==NULL || value==NULL || type==NULL)
 		return;
 
-	if (is_str_eq(type, "xsd:unsignedInt")) {
+	if (is_str_eq(type, DMT_TYPE[DMT_UNINT])) {
 		blobmsg_add_u32(bb, param, (uint32_t)atoi(value));
-	} else if (is_str_eq(type, "xsd:int")) {
+	} else if (is_str_eq(type, DMT_TYPE[DMT_INT])) {
 		blobmsg_add_u32(bb, param, (uint32_t)atoi(value));
-	} else if (is_str_eq(type, "xsd:long")) {
+	} else if (is_str_eq(type, DMT_TYPE[DMT_LONG])) {
 		blobmsg_add_double(bb, param, atol(value));
-	} else if (is_str_eq(type, "xsd:boolean")) {
-		if (0 == strncasecmp(value, "true", 4) ||
-		    '1' == value[0] ||
-		    0 == strncasecmp(value, "on", 2) ||
-		    0 == strncasecmp(value, "yes", 3) ||
-		    0 == strncasecmp(value, "enabled", 7))
+	} else if (is_str_eq(type, DMT_TYPE[DMT_BOOL])) {
+		if (get_boolean_string(value))
 			blobmsg_add_u8(bb, param, true);
 		else
 			blobmsg_add_u8(bb, param, false);
@@ -587,7 +610,7 @@ void process_result(struct blob_buf *bb, unsigned int len) {
 					push();
 					char temp[NAME_MAX] = {'\0'};
 					strncpy(temp, rnode->name, len);
-					strcat(temp, pn);
+					strncat(temp, pn, strlen(pn));
 					//INFO("Push1 |%s|, node|%s|", temp, pn);
 					len = strlen(temp);
 
@@ -872,28 +895,66 @@ static bool bbf_get_name_exp(char *path, char *operator, char *operand) {
 	bool ret = false;
 
 	bbf_init(&dm_ctx, path);
-	if(!bbf_get(CMD_GET_VALUE, path, &dm_ctx, "true")) {
-		list_for_each_entry(n, &dm_ctx.list_parameter, list) {
-			DEBUG("Get |%s| value|%s| operator|%s|", path, n->data, operator);
-			int n1=0, n2=0;
-			// fix this for all datatypes
-			n1 = atoi(operand);
-			n2 = atoi(n->data);
-			if(is_str_eq("==", operator) && (0==strcasecmp(n->data, operand))) {
-				ret = true;
-			} else if(is_str_eq("!=",operator) && (0==strcasecmp(n->data, operand))) {
-				ret = true;
-			} else if(is_str_eq("<",operator)) {
-				if ( n2 < n1 ) ret = true;
-			} else if(is_str_eq(">",operator)) {
-				if ( n2 > n1 ) ret = true;
-			} else if(is_str_eq("<=",operator)) {
-				if ( n2 <= n1 ) ret = true;
-			} else if(is_str_eq(">=",operator)) {
-				if ( n2 >= n1 ) ret = true;
+	if(bbf_get(CMD_GET_VALUE, path, &dm_ctx, "true")) {
+		ERR("bbf_get failed path(%s)", path);
+		bbf_cleanup(&dm_ctx);
+		return(ret);
+	}
+	list_for_each_entry(n, &dm_ctx.list_parameter, list) {
+		DEBUG("Get |%s| value|%s| operator|%s|", path, n->data, operator);
+		unsigned long n1=0, n2=0;
+		// TODO: fix this for all datatypes
+		n1 = (unsigned long) atol(operand);
+		n2 = (unsigned long) atol(n->data);
+		if (is_str_eq("==", operator)) {
+			if (is_str_eq(n->type, DMT_TYPE[DMT_BOOL])) {
+				if (get_boolean_string(n->data) ==
+				    get_boolean_string(operand)) {
+					ret = true;
+					break;
+				}
 			} else {
-				ERR("Unknown operation");
+				if (strcasecmp(n->data, operand) == 0) {
+					ret = true;
+					break;
+				}
 			}
+
+		} else if (is_str_eq("!=",operator)) {
+			if (is_str_eq(n->type, DMT_TYPE[DMT_BOOL])) {
+				if (get_boolean_string(n->data) !=
+				    get_boolean_string(operand)) {
+					ret = true;
+					break;
+				}
+			} else {
+				if (strcasecmp(n->data, operand) != 0) {
+					ret = true;
+					break;
+				}
+			}
+		} else if (is_str_eq("<", operator)) {
+			if ( n2 < n1 ) {
+				ret = true;
+				break;
+			}
+		} else if (is_str_eq(">", operator)) {
+			if ( n2 > n1 ) {
+				ret = true;
+				break;
+			}
+		} else if (is_str_eq("<=", operator)) {
+			if ( n2 <= n1 ) {
+				ret = true;
+				break;
+			}
+		} else if (is_str_eq(">=", operator)) {
+			if ( n2 >= n1 ) {
+				ret = true;
+				break;
+			}
+		} else {
+			ERR("Fail (%s %s %s)", operand, operator, n->data);
 		}
 	}
 	bbf_cleanup(&dm_ctx);
@@ -943,11 +1004,11 @@ static void dereference_path(char *ref, char *l_op, char *r_op, char *op) {
 		char path[NAME_MAX]={'\0'};
 		char ref_path[NAME_MAX]={'\0'};
 		char *node = NULL;
-		strcpy(path,p->ref_path);
-		strcat(path, ref);
+		strncpy(path, p->ref_path, strlen(p->ref_path)+1);
+		strncat(path, ref, strlen(ref));
 		node = bbf_get_value_by_id(path);
-		strcpy(ref_path, node);
-		strcat(ref_path, l_op);
+		strncpy(ref_path, node, strlen(node)+1);
+		strncat(ref_path, l_op, strlen(l_op));
 		DEBUG("de ref|%s|, path|%s|, node|%s|", ref_path, path, node);
 		free(node);
 
@@ -1014,8 +1075,8 @@ static void solve(char *exp) {
 		pathnode *p=head;
 		while(p!=NULL) {
 			char name[NAME_MAX]={'\0'};
-			strcpy(name, p->ref_path);
-			strcat(name, token);
+			strncpy(name, p->ref_path, strlen(p->ref_path)+1);
+			strncat(name, token, strlen(token));
 			if(bbf_get_name_exp(name, operator, operand)){
 				insert(strdup(p->ref_path), false);
 			}
@@ -1082,7 +1143,7 @@ static size_t expand_expression(char *path, char *exp) {
 			pathnode *p=head;
 			while(p!=NULL) {
 				char *token = NULL;
-				sprintf(_path,"%s%s", p->ref_path, name);
+				snprintf(_path, NAME_MAX, "%s%s", p->ref_path, name);
 				node = bbf_get_value_by_id(_path);
 				int node_count = 1;
 				while ((token = strtok_r(node, ",", &node))) {
@@ -1125,8 +1186,8 @@ void filter_results(char *path, size_t start, size_t end) {
 		pathnode *p=head;
 		while(p!=NULL) {
 			char name[NAME_MAX]={'\0'};
-			strcpy(name, p->ref_path);
-			strcat(name, pp);
+			strncpy(name, p->ref_path, strlen(p->ref_path)+1);
+			strncat(name, pp, strlen(pp));
 			DEBUG("Final path[%s], ref |%s|", name, p->ref_path);
 			insert(strdup(name), false);
 			p = p->next;
@@ -1146,7 +1207,7 @@ void filter_results(char *path, size_t start, size_t end) {
 
 	while(p!=NULL) {
 		char ref_name[NAME_MAX]={'\0'};
-		sprintf(ref_name, "%s%s", p->ref_path, name);
+		snprintf(ref_name, NAME_MAX, "%s%s", p->ref_path, name);
 		insert(strdup(ref_name), false);
 		p = p->next;
 	}

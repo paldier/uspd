@@ -46,11 +46,11 @@ void set_multiple_values(struct blob_buf *bb, struct blob_attr *blob_value) {
 		pathnode *p=head;
 		while(p!=NULL) {
 			char path[PATH_MAX] = {'\0'}, value[NAME_MAX] = {'\0'};
-			sprintf(path, "%s%s", p->ref_path, hdr->name);
+			snprintf(path, PATH_MAX, "%s%s", p->ref_path, hdr->name);
 
 			switch(blob_id(attr)) {
 				case BLOBMSG_TYPE_STRING:
-					sprintf(value, "%s", (char *)blobmsg_data(attr));
+					snprintf(value, NAME_MAX, "%s", (char *)blobmsg_data(attr));
 					break;
 				case BLOBMSG_TYPE_INT8:
 					sprintf(value, "%d", *(uint8_t *)blobmsg_data(attr));
@@ -63,7 +63,7 @@ void set_multiple_values(struct blob_buf *bb, struct blob_attr *blob_value) {
 					break;
 				case BLOBMSG_TYPE_INT64:
 				case BLOBMSG_TYPE_DOUBLE:
-					sprintf(value, "%"PRIu64, *(uint64_t *)blobmsg_data(attr));
+					snprintf(value, NAME_MAX, "%"PRIu64"", *(uint64_t *)blobmsg_data(attr));
 					break;
 				default:
 					INFO("Unhandled set request type|%x|", blob_id(attr));

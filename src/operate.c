@@ -39,7 +39,7 @@ opr_ret_t create_operate_response(struct blob_buf *bb, char *cmd, struct blob_at
 		struct dmctx dm_ctx = {0};
 		struct dm_parameter *n;
 		char tmp[NAME_MAX] = {'\0'};
-		sprintf(tmp, "%s%s", p->ref_path, cmd);
+		snprintf(tmp, NAME_MAX, "%s%s", p->ref_path, cmd);
 		bbf_init(&dm_ctx, tmp);
 
 		if(bv) {

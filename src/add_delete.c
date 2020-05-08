@@ -21,6 +21,9 @@
  */
 
 #include "common.h"
+#include "add_delete.h"
+
+extern pathnode *head;
 
 void add_object(struct blob_buf *bb, char *path, const char *pkey)
 {
@@ -54,6 +57,25 @@ void add_object(struct blob_buf *bb, char *path, const char *pkey)
 	bbf_cleanup(&dm_ctx);
 }
 
+void create_del_response(struct blob_buf *bb, char *path, const char *pkey)
+{
+	void *array, *table;
+	pathnode *p;
+
+	filter_results(path, 0, strlen(path));
+
+	p = head;
+	array = blobmsg_open_array(bb, "parameters");
+	while(p) {
+		table = blobmsg_open_table(bb, NULL);
+		del_object(bb, p->ref_path, pkey);
+		blobmsg_close_table(bb, table);
+		p = p->next;
+	}
+	deleteList();
+	blobmsg_close_array(bb, array);
+}
+
 void del_object(struct blob_buf *bb, char *path, const char *pkey)
 {
 	struct dmctx dm_ctx = {0};
@@ -65,6 +87,8 @@ void del_object(struct blob_buf *bb, char *path, const char *pkey)
 		pkey = "true";
 
 	fault = (uint32_t)dm_entry_param_method(&dm_ctx, CMD_DEL_OBJECT, path, (char *)pkey, NULL);
+
+	blobmsg_add_string(bb, "parameter", path);
 	if (fault) {
 		blobmsg_add_u8(bb, "status", 0);
 		blobmsg_add_u32(bb, "fault", fault);

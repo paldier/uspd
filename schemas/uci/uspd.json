@@ -1,0 +1,25 @@
+{
+  "uspd": [
+    {
+      "section": "uspd",
+      "description": "USP daemon Settings",
+      "multi": false,
+      "options": [
+        {
+          "name": "granularitylevel",
+          "type": "integer",
+          "required": "no",
+          "default": "0",
+          "description": "Creates ubus objects along with object names, depth of object name depends on granularitylevel"
+        },
+        {
+          "name": "loglevel",
+          "type": "integer",
+          "required": "no",
+          "default": "1",
+          "description": "Internal loglevel for debuging"
+        }
+      ]
+    }
+  ]
+}

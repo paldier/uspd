@@ -175,6 +175,7 @@ static int usp_get_safe(struct ubus_context *ctx,
 		blobmsg_close_array(&bb, a);
 
 	ubus_send_reply(ctx, req, bb.head);
+	blob_buf_free(&bb);
 	return 0;
 }
 

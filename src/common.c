@@ -22,6 +22,7 @@
  */
 
 #include "common.h"
+#include "strncpyt.h"
 
 #define GLOB_CHAR "[[+*]+"
 #define GLOB_EXPR "[=><]+"
@@ -41,7 +42,6 @@ const char *DMT_TYPE[] = {
 };
 
 static bool is_node_instance(char *path);
-static bool is_leaf(char *path, char *);
 bool match(const char *string, const char *pattern);
 struct uci_context *uci_ctx = NULL;
 
@@ -578,13 +578,19 @@ static bool leaf_same_group(char *path) {
 	return false;
 }
 
-static bool is_leaf(char *path, char *node) {
+static bool is_leaf(char *path, char *node, size_t maxlen) {
 	DEBUG("entry path|%s|", path);
 	char *ret = NULL;
-	ret =  strchr(path, DELIM);
 
-	if(ret != NULL) {
-		strncpy(node, path, strlen(path) - strlen(ret)+1);
+	ret = strchr(path, DELIM);
+	if (ret != NULL) {
+		size_t retlen = (size_t)(ret - path) + 1;
+
+		if (retlen > maxlen)
+			retlen = maxlen;
+
+		memcpy(node, path, retlen);
+		node[retlen] = 0;
 	}
 
 	return (ret==NULL);
@@ -600,7 +606,7 @@ void process_result(struct blob_buf *bb, unsigned int len) {
 	DEBUG("Entry node |%s|, len|%u|", rnode->name, len);
 
 	if(leaf_same_group(rnode->name)) {
-		if(is_leaf(rnode->name+len, pn)) {
+		if(is_leaf(rnode->name+len, pn, sizeof(pn) - 1)) {
 			//INFO("add leaf |%s|", rnode->name+len);
 			add_data_blob(bb, rnode->name+len, rnode->value, rnode->type);
 		} else {
@@ -611,13 +617,13 @@ void process_result(struct blob_buf *bb, unsigned int len) {
 				} else {
 					push();
 					char temp[NAME_MAX] = {'\0'};
-					strncpy(temp, rnode->name, len);
-					strncat(temp, pn, strlen(pn));
+					memcpy(temp, rnode->name, len);
+					strncat(temp, pn, sizeof(temp) - 1);
 					//INFO("Push1 |%s|, node|%s|", temp, pn);
 					len = strlen(temp);
 
 					char table_name[NAME_MAX]={'\0'};
-					strncpy(table_name, pn, strlen(pn)-1);
+					strcpy(table_name, pn);
 
 					if(is_node_instance(rnode->name + len)) {
 						//INFO("Open table |%s|", table_name);
@@ -641,7 +647,7 @@ void process_result(struct blob_buf *bb, unsigned int len) {
 			//INFO("Closing table for |%s|", g_result[rtop].key);
 			blobmsg_close_table(bb,g_result[rtop].cookie);
 		}
-		if(is_leaf(rnode->name, pn)) {
+		if(is_leaf(rnode->name, pn, sizeof(pn) - 1)) {
 			//INFO("add in blob|%s|, value|%s|, type|%s|", rnode->name, rnode->value, rnode->type);
 			add_data_blob(bb, rnode->name, rnode->value, rnode->type);
 		} else {
@@ -656,7 +662,8 @@ void process_result(struct blob_buf *bb, unsigned int len) {
 				len = strlen(pn);
 
 				char table_name[NAME_MAX]={'\0'};
-				strncpy(table_name, pn, len-1);
+
+				memcpy(table_name, pn, len - 1);
 
 				if(is_node_instance(rnode->name + len)) {
 					//INFO("Open table |%s|", table_name);
@@ -1006,11 +1013,11 @@ static void dereference_path(char *ref, char *l_op, char *r_op, char *op) {
 		char path[NAME_MAX]={'\0'};
 		char ref_path[NAME_MAX]={'\0'};
 		char *node = NULL;
-		strncpy(path, p->ref_path, strlen(p->ref_path)+1);
-		strncat(path, ref, strlen(ref));
+		strncpyt(path, p->ref_path, sizeof(path));
+		strncat(path, ref, sizeof(path) - 1);
 		node = bbf_get_value_by_id(path);
-		strncpy(ref_path, node, strlen(node)+1);
-		strncat(ref_path, l_op, strlen(l_op));
+		strncpyt(ref_path, node, sizeof(ref_path));
+		strncat(ref_path, l_op, sizeof(ref_path) - 1);
 		DEBUG("de ref|%s|, path|%s|, node|%s|", ref_path, path, node);
 		free(node);
 
@@ -1077,8 +1084,8 @@ static void solve(char *exp) {
 		pathnode *p=head;
 		while(p!=NULL) {
 			char name[NAME_MAX]={'\0'};
-			strncpy(name, p->ref_path, strlen(p->ref_path)+1);
-			strncat(name, token, strlen(token));
+			strncpyt(name, p->ref_path, sizeof(name));
+			strncat(name, token, sizeof(name) - 1);
 			if(bbf_get_name_exp(name, operator, operand)){
 				insert(strdup(p->ref_path), false);
 			}
@@ -1188,8 +1195,8 @@ void filter_results(char *path, size_t start, size_t end) {
 		pathnode *p=head;
 		while(p!=NULL) {
 			char name[NAME_MAX]={'\0'};
-			strncpy(name, p->ref_path, strlen(p->ref_path)+1);
-			strncat(name, pp, strlen(pp));
+			strncpy(name, p->ref_path, sizeof(name));
+			strncat(name, pp, sizeof(name) - 1);
 			DEBUG("Final path[%s], ref |%s|", name, p->ref_path);
 			insert(strdup(name), false);
 			p = p->next;

@@ -41,6 +41,7 @@
 #include "operate.h"
 #include "common.h"
 #include "add_delete.h"
+#include "strncpyt.h"
 
 #define USP "usp"
 #define USP_GRA "usp."
@@ -189,7 +190,6 @@ int usp_add_del_handler(struct ubus_context *ctx, struct ubus_object *obj,
 	struct blob_buf bb = {};
 	size_t path_len;
 	char *blob_msg = NULL;
-	size_t  blog_msg_len=0;
 
 	INFO("Entry method|%s| ubus name|%s|", method, obj->name);
 
@@ -214,8 +214,7 @@ int usp_add_del_handler(struct ubus_context *ctx, struct ubus_object *obj,
 			(char *)blobmsg_data(tb[DM_ADD_PATH]));
 	} else {
 		blob_msg = blobmsg_data(tb[DM_ADD_PATH]);
-		blog_msg_len = strlen(blob_msg)+1;
-		strncpy(path, blob_msg, blog_msg_len);
+		strncpyt(path, blob_msg, sizeof(path));
 	}
 
 	path_len = strlen(path);
@@ -252,7 +251,6 @@ int usp_get_handler(struct ubus_context *ctx, struct ubus_object *obj,
 	char path[PATH_MAX];
 	struct blob_buf bb = {};
 	char *blob_msg = NULL;
-	size_t  blog_msg_len=0;
 
 	INFO("Entry method|%s| ubus name|%s|", method, obj->name);
 
@@ -277,8 +275,7 @@ int usp_get_handler(struct ubus_context *ctx, struct ubus_object *obj,
 			(char *)blobmsg_data(tb[DM_GET_PATH]));
 	} else {
 		blob_msg = blobmsg_data(tb[DM_GET_PATH]);
-		blog_msg_len = strlen(blob_msg)+1;
-		strncpy(path, blob_msg, blog_msg_len);
+		strncpyt(path, blob_msg, sizeof(path));
 	}
 
 	filter_results(path, 0, strlen(path));
@@ -312,7 +309,6 @@ int usp_set(struct ubus_context *ctx, struct ubus_object *obj,
 	struct blob_attr *tb[__DM_SET_MAX] = {NULL};
 	char path[PATH_MAX]={'\0'}, value[NAME_MAX]={'\0'};
 	char *blob_msg = NULL;
-	size_t  blog_msg_len=0;
 	void *array = NULL;
 
 	if(blobmsg_parse(dm_set_policy, __DM_SET_MAX, tb, blob_data(msg), blob_len(msg))) {
@@ -344,8 +340,7 @@ int usp_set(struct ubus_context *ctx, struct ubus_object *obj,
 			 (char *)blobmsg_data(tb[DM_SET_PATH]));
 	} else {
 		blob_msg = blobmsg_data(tb[DM_SET_PATH]);
-		blog_msg_len = strlen(blob_msg)+1;
-		strncpy(path, blob_msg, blog_msg_len);
+		strncpyt(path, blob_msg, sizeof(path));
 	}
 
 	filter_results(path, 0, strlen(path));
@@ -354,8 +349,7 @@ int usp_set(struct ubus_context *ctx, struct ubus_object *obj,
 
 	if (tb[DM_SET_VALUE]) {
 		blob_msg = blobmsg_data(tb[DM_SET_VALUE]);
-		blog_msg_len = strlen(blob_msg)+1;
-		strncpy(value, blob_msg, blog_msg_len);
+		strncpyt(value, blob_msg, sizeof(value));
 		create_set_response(&bb, value);
 	}
 	if(tb[DM_SET_VALUE_TABLE]) {
@@ -388,7 +382,6 @@ int usp_operate(struct ubus_context *ctx, struct ubus_object *obj,
 	char cmd[NAME_MAX]={'\0'};
 	INFO("Entry method|%s| ubus name|%s|", method, obj->name);
 	char *blob_msg = NULL;
-	size_t  blog_msg_len=0;
 
 	if(blobmsg_parse(dm_operate_policy, __DM_OPERATE_MAX, tb, blob_data(msg), blob_len(msg))) {
 		ERR("Failed to parse blob");
@@ -417,12 +410,10 @@ int usp_operate(struct ubus_context *ctx, struct ubus_object *obj,
 			 (char *)blobmsg_data(tb[DM_OPERATE_PATH]));
 	} else {
 		blob_msg = blobmsg_data(tb[DM_OPERATE_PATH]);
-		blog_msg_len = strlen(blob_msg)+1;
-		strncpy(path, blob_msg, blog_msg_len);
+		strncpyt(path, blob_msg, sizeof(path));
 	}
 	blob_msg = blobmsg_data(tb[DM_OPERATE_ACTION]);
-	blog_msg_len = strlen(blob_msg)+1;
-	strncpy(cmd, blob_msg, blog_msg_len);
+	strncpyt(cmd, blob_msg, sizeof(cmd));
 
 	filter_results(path, 0, strlen(path));
 
@@ -507,7 +498,7 @@ static void add_granular_objects(struct ubus_context *ctx, int gn_level)
 	p = head;
 	while(p!=NULL) {
 		char obj_path[MAXNAMLEN]=USP_GRA;
-		strncat(obj_path,p->ref_path,strlen(p->ref_path));
+		strncat(obj_path,p->ref_path,sizeof(obj_path) - 1);
 
 		size_t len = strlen(obj_path);
 		if (obj_path[len-1] == DELIM)

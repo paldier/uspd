@@ -2,7 +2,13 @@ PROG = uspd
 OBJS =common.o get.o set.o operate.o add_delete.o usp.o
 CP=cp -f
 
-PROG_CFLAGS = $(CFLAGS) -DDM_USE_LIBUBUS
+PROG_CFLAGS = $(CFLAGS) -DDM_USE_LIBUBUS \
+	      -fstrict-aliasing \
+	      -Wall -Wextra -Werror \
+	      -DDM_USE_LIBUBUS \
+	      -Wformat \
+	      -Wformat-signedness
+
 PROG_LDFLAGS = $(LDFLAGS)
 PROG_LDFLAGS += -luci -lubus -lubox -ljson-c -lblobmsg_json -lbbfdm
 GCOV = gcov

@@ -1,2 +1,12 @@
 .*.swp
 .*.swo
+.built*
+.configured_*
+.dep_files
+.git_update
+.pkgdir/
+.prepared_*
+ipkg-arm_xscale/
+src/*.o
+src/uspd
+uspd

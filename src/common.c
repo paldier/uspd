@@ -738,30 +738,58 @@ bool is_search_by_reference(char *path) {
 	return ((last_plus-last_bracket)>0?true:false);
 }
 
-int bbf_get_value(char *path, bool fill, char *query_path, struct blob_buf *bb) {
+static int count_delim(char *path)
+{
+	int count = 0;
+	const char s[2] = ".";
+	char *token, *save;
+	char *pp = strdup(path);
+
+	token = strtok_r(pp, s, &save);
+	while (token != NULL) {
+		token = strtok_r(NULL, s, &save);
+		count++;
+	}
+	free(pp);
+
+	// count is the count of tokens
+	return (count - 1);
+}
+
+int bbf_get_value(char *path, bool fill, char *query_path, struct blob_buf *bb, uint8_t maxdepth)
+{
 	struct dmctx dm_ctx = {0};
 	struct dm_parameter *n;
 	DEBUG("Entry path |%s|, fill|%d|, query_path|%s|", path, fill, query_path);
 	size_t plen = get_glob_len(query_path);
+	size_t path_len = strlen(path);
 
 	DEBUG("plen |%zu|", plen);
 	bbf_init(&dm_ctx, path);
 	int fault = bbf_get(CMD_GET_VALUE, path, &dm_ctx, "true");
-	if(!fault) {
-		if(fill) {
-			list_for_each_entry(n, &dm_ctx.list_parameter, list) {
-				if(is_search_by_reference(query_path)) {
-					char *end_delim = strrchr(n->name, DELIM);
-					plen = (size_t)labs(end_delim - n->name);
-				}
-				DEBUG("insert node|%s|, value|%s| ", n->name+plen, n->data);
+
+	if(!fault && fill) {
+		list_for_each_entry(n, &dm_ctx.list_parameter, list) {
+			if(is_search_by_reference(query_path)) {
+				char *end_delim = strrchr(n->name, DELIM);
+				plen = (size_t)labs(end_delim - n->name);
+			}
+			if (maxdepth > 4 || maxdepth == 0) {
 				insert_result(n->name+plen, n->data, n->type);
+			} else {
+				uint8_t count = count_delim(n->name + path_len);
+				if (count < maxdepth) {
+					insert_result(n->name+plen, n->data, n->type);
+				}
 			}
 		}
 	} else {
-		blobmsg_add_string(bb, "path", path);
-		blobmsg_add_u32(bb, "fault", (uint32_t)fault);
+		if (fault) {
+			blobmsg_add_string(bb, "path", path);
+			blobmsg_add_u32(bb, "fault", (uint32_t)fault);
+		}
 	}
+
 	bbf_cleanup(&dm_ctx);
 	return fault;
 }

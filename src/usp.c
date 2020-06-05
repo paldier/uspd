@@ -57,6 +57,7 @@ extern pathnode *head;
 enum {
 	DM_GET_PATH,
 	DM_GET_PROTO,
+	DM_GET_MAXDEPTH,
 	__DM_GET_MAX
 };
 
@@ -84,6 +85,7 @@ enum {
 static const struct blobmsg_policy dm_get_policy[__DM_GET_MAX] = {
 	[DM_GET_PATH] = { .name = "path", .type = BLOBMSG_TYPE_STRING },
 	[DM_GET_PROTO] = { .name = "proto", .type = BLOBMSG_TYPE_STRING },
+	[DM_GET_MAXDEPTH] = { .name = "maxdepth", .type = BLOBMSG_TYPE_INT32 },
 };
 
 static const struct blobmsg_policy dm_get_safe_policy[__DM_GET_SAFE_MAX] = {
@@ -265,6 +267,7 @@ int usp_get_handler(struct ubus_context *ctx, struct ubus_object *obj,
 	char path[PATH_MAX];
 	struct blob_buf bb = {};
 	char *blob_msg = NULL;
+	uint8_t maxdepth = 0;
 
 	INFO("Entry method|%s| ubus name|%s|", method, obj->name);
 
@@ -295,13 +298,17 @@ int usp_get_handler(struct ubus_context *ctx, struct ubus_object *obj,
 	filter_results(path, 0, strlen(path));
 	update_valid_paths();
 
+	if (tb[DM_GET_MAXDEPTH])
+		maxdepth = blobmsg_get_u32(tb[DM_GET_MAXDEPTH]);
+
+
 	blob_buf_init(&bb, 0);
 
 	if (is_str_eq(method, "get")) {
 		if(is_str_eq(obj->name, RAWUSP)) {
 			create_raw_response(&bb);
 		} else {
-			create_response(&bb, path);
+			create_response(&bb, path, maxdepth);
 		}
 	} else if (is_str_eq(method, "object_names")) {
 		create_name_response(&bb);

@@ -24,11 +24,11 @@
 #include "get.h"
 extern pathnode *head;
 
-void create_response(struct blob_buf *bb, char *qpath) {
+void create_response(struct blob_buf *bb, char *qpath, uint8_t maxdepth) {
 	pathnode *p=head;
 	p = head;
 	while(p!=NULL) {
-		if (bbf_get_value(p->ref_path, true, qpath, bb))
+		if (bbf_get_value(p->ref_path, true, qpath, bb, maxdepth))
 			break;
 		p = p->next;
 	}

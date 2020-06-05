@@ -22,6 +22,8 @@
 
 #include "common.h"
 #include "get.h"
+#include "strncpyt.h"
+
 extern pathnode *head;
 
 void create_response(struct blob_buf *bb, char *qpath, uint8_t maxdepth) {
@@ -56,9 +58,15 @@ void get_resolved_path(struct blob_buf *bb)
 
 	array = blobmsg_open_array(bb, "parameters");
 	while(p != NULL) {
+		char temp[NAME_MAX] = { };
+		size_t nlen = strlen(p->ref_path);
+		strncpyt(temp, p->ref_path, nlen);
+		if (temp[nlen - 1] == '.')
+			temp[nlen - 1] = '\0';
+
 		table = blobmsg_open_table(bb, NULL);
 
-		blobmsg_add_string(bb, "parameter", p->ref_path);
+		blobmsg_add_string(bb, "parameter", temp);
 		blobmsg_close_table(bb, table);
 		p = p->next;
 	}

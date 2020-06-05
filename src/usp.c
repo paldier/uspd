@@ -48,6 +48,10 @@
 #define RAWUSP "usp.raw"
 #define DEFAULT_LOG_LEVEL (2)
 
+#define MIN_LEN (7)  // len of 'Device.'
+#define ROOT_NODE "Device."
+
+
 extern pathnode *head;
 
 enum {
@@ -102,11 +106,21 @@ static const struct blobmsg_policy dm_set_policy[__DM_SET_MAX] = {
 
 static bool is_sanitized(char *param)
 {
+	size_t len;
+
 	if (param==NULL)
 		return false;
 
-	size_t len = strlen(param);
-	if (param[0]=='\0' || param[0]==' ' || len<1)
+	len = strlen(param);
+	if (param[0] == '\0' || param[0] == ' ')
+		return false;
+
+	// Check the minimum len in path
+	if (len < MIN_LEN)
+		return false;
+
+	// Fail if path does not start from Device.
+	if (strncmp(param, ROOT_NODE, MIN_LEN))
 		return false;
 
 	if (param[len-1]==' ')
@@ -201,11 +215,6 @@ int usp_add_del_handler(struct ubus_context *ctx, struct ubus_object *obj,
 	if (!(tb[DM_ADD_PATH]))
 		return UBUS_STATUS_INVALID_ARGUMENT;
 
-	if (!is_sanitized(blobmsg_data(tb[DM_ADD_PATH]))) {
-		ERR("Invalid option |%s|", (char *)blobmsg_data(tb[DM_ADD_PATH]));
-		return UBUS_STATUS_INVALID_ARGUMENT;
-	}
-
 	set_bbf_data_type(tb[DM_ADD_PROTO]);
 
 	// In case of granular objects, Concatenate relative path to ubus object
@@ -222,6 +231,11 @@ int usp_add_del_handler(struct ubus_context *ctx, struct ubus_object *obj,
 	// Need to add . as obuspa trims last . from path
 	if(path[path_len-1] != DELIM) {
 		strcat(path, ".");
+	}
+
+	if (!is_sanitized(path)) {
+		ERR("Invalid path |%s|", path);
+		return UBUS_STATUS_INVALID_ARGUMENT;
 	}
 
 	if (tb[DM_ADD_PARAMETER_KEY])
@@ -262,11 +276,6 @@ int usp_get_handler(struct ubus_context *ctx, struct ubus_object *obj,
 	if (!(tb[DM_GET_PATH]))
 		return UBUS_STATUS_INVALID_ARGUMENT;
 
-	if (!is_sanitized(blobmsg_data(tb[DM_GET_PATH]))) {
-		ERR("Invalid option |%s|", (char *)blobmsg_data(tb[DM_GET_PATH]));
-		return UBUS_STATUS_INVALID_ARGUMENT;
-	}
-
 	set_bbf_data_type(tb[DM_GET_PROTO]);
 
 	// In case of granular objects, Concatenate relative path to ubus object
@@ -278,7 +287,14 @@ int usp_get_handler(struct ubus_context *ctx, struct ubus_object *obj,
 		strncpyt(path, blob_msg, sizeof(path));
 	}
 
+	if (!is_sanitized(path)) {
+		ERR("Invalid path |%s|", path);
+		return UBUS_STATUS_INVALID_ARGUMENT;
+	}
+
 	filter_results(path, 0, strlen(path));
+	update_valid_paths();
+
 	blob_buf_init(&bb, 0);
 
 	if (is_str_eq(method, "get")) {
@@ -291,6 +307,8 @@ int usp_get_handler(struct ubus_context *ctx, struct ubus_object *obj,
 		create_name_response(&bb);
 	} else if (is_str_eq(method, "instances")) {
 		create_inst_name_response(&bb);
+	} else if (is_str_eq(method, "resolve")) {
+		get_resolved_path(&bb);
 	} else {
 		ERR("method(%s) not defined", method);
 	}
@@ -322,11 +340,6 @@ int usp_set(struct ubus_context *ctx, struct ubus_object *obj,
 	if (!tb[DM_SET_VALUE] && !tb[DM_SET_VALUE_TABLE])
 		return UBUS_STATUS_INVALID_ARGUMENT;
 
-	if (!is_sanitized(blobmsg_data(tb[DM_SET_PATH]))) {
-		ERR("Invalid option |%s|", (char *)blobmsg_data(tb[DM_SET_PATH]));
-		return UBUS_STATUS_INVALID_ARGUMENT;
-	}
-
 	set_bbf_data_type(tb[DM_SET_PROTO]);
 
 	struct blob_buf bb;
@@ -343,7 +356,13 @@ int usp_set(struct ubus_context *ctx, struct ubus_object *obj,
 		strncpyt(path, blob_msg, sizeof(path));
 	}
 
+	if (!is_sanitized(path)) {
+		ERR("Invalid path |%s|", path);
+		return UBUS_STATUS_INVALID_ARGUMENT;
+	}
+
 	filter_results(path, 0, strlen(path));
+	update_valid_paths();
 
 	array = blobmsg_open_array(&bb, "parameters");
 
@@ -394,11 +413,6 @@ int usp_operate(struct ubus_context *ctx, struct ubus_object *obj,
 	if (!(tb[DM_OPERATE_ACTION]))
 		return UBUS_STATUS_INVALID_ARGUMENT;
 
-	if (!is_sanitized(blobmsg_data(tb[DM_OPERATE_PATH]))) {
-		ERR("Invalid option |%s|", (char *)blobmsg_data(tb[DM_OPERATE_PATH]));
-		return UBUS_STATUS_INVALID_ARGUMENT;
-	}
-
 	set_bbf_data_type(tb[DM_OPERATE_PROTO]);
 
 	memset(&bb, 0, sizeof(struct blob_buf));
@@ -416,6 +430,7 @@ int usp_operate(struct ubus_context *ctx, struct ubus_object *obj,
 	strncpyt(cmd, blob_msg, sizeof(cmd));
 
 	filter_results(path, 0, strlen(path));
+	update_valid_paths();
 
 	if(UBUS_INVALID_ARGUMENTS == create_operate_response(&bb, cmd, tb[DM_OPERATE_INPUT])) {
 		blob_buf_free(&bb);
@@ -437,6 +452,7 @@ static struct ubus_method usp_methods[] = {
 	UBUS_METHOD("del_object", usp_add_del_handler, dm_add_policy),
 	UBUS_METHOD("object_names", usp_get_handler, dm_get_policy),
 	UBUS_METHOD("instances", usp_get_handler, dm_get_policy),
+	UBUS_METHOD("resolve", usp_get_handler, dm_get_policy),
 };
 
 static struct ubus_object_type usp_type = UBUS_OBJECT_TYPE("usp", usp_methods);

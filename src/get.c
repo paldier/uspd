@@ -49,6 +49,23 @@ void create_raw_response(struct blob_buf *bb) {
 	prepare_result(bb);
 }
 
+void get_resolved_path(struct blob_buf *bb)
+{
+	pathnode *p=head;
+	void *array, *table;
+
+	array = blobmsg_open_array(bb, "parameters");
+	while(p != NULL) {
+		table = blobmsg_open_table(bb, NULL);
+
+		blobmsg_add_string(bb, "parameter", p->ref_path);
+		blobmsg_close_table(bb, table);
+		p = p->next;
+	}
+	blobmsg_close_array(bb, array);
+	deleteList();
+}
+
 void create_inst_name_response(struct blob_buf *bb) {
 	pathnode *p=head;
 	void *array = blobmsg_open_array(bb, "parameters");

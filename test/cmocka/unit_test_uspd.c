@@ -155,7 +155,7 @@ static void test_api_usp_instances_Device_Users_User(void **state)
 
         tmp = json_object_object_get(array_index_obj, "parameter");
 
-        assert_string_equal(json_object_get_string(tmp), "Device.Users.User.1.");
+        assert_string_equal(json_object_get_string(tmp), "Device.Users.User.1");
 
         json_object_put(jobj);
         return;
@@ -331,7 +331,7 @@ static void test_api_usp_raw_instances_Device_Users_User(void **state)
 
         tmp = json_object_object_get(array_index_obj, "parameter");
 
-        assert_string_equal(json_object_get_string(tmp), "Device.Users.User.1.");
+        assert_string_equal(json_object_get_string(tmp), "Device.Users.User.1");
 
         json_object_put(jobj);
         return;

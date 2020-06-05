@@ -52,6 +52,8 @@ void process_result(struct blob_buf *bb, unsigned int len);
 void prepare_result(struct blob_buf *bb);
 
 bool get_uci_option_string(char *package, char *section, char *option, char **value);
+int bbf_validate_path(char *path);
+void update_valid_paths();
 
 void set_debug_level(unsigned char level);
 void print_error(const char *format, ...);
@@ -61,7 +63,7 @@ void print_debug(const char *format, ...);
 
 #define DEBUG(fmt, args...) \
 do { \
-	print_debug(fmt, ##args); \
+	print_debug("[%s:%d]"fmt, __func__, __LINE__, ##args); \
 } while (0)
 
 #define INFO(fmt, args...) \

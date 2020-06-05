@@ -843,8 +843,14 @@ int bbf_get_inst_name_raw(char *path, struct blob_buf *bb) {
 					cnt += 1;
 				}
 				if(is_inst) {
+					// Remove the last . from path
+					char temp[NAME_MAX] = { };
+					size_t nlen = strlen(n->name);
+					strncpyt(temp, n->name, nlen);
+					if (temp[nlen - 1] == '.')
+						temp[nlen - 1] = '\0';
 					void *table = blobmsg_open_table(bb, NULL);
-					blobmsg_add_string(bb, "parameter", n->name);
+					blobmsg_add_string(bb, "parameter", temp);
 					blobmsg_close_table(bb, table);
 				}
 			}
@@ -883,6 +889,35 @@ int bbf_get_name_raw(char *path, struct blob_buf *bb) {
 	}
 	bbf_cleanup(&dm_ctx);
 	return fault;
+}
+
+int bbf_validate_path(char *path)
+{
+	int fault;
+	struct dmctx dm_ctx = {0};
+
+	bbf_init(&dm_ctx, path);
+	fault = bbf_get(CMD_GET_NAME, path, &dm_ctx, "true");
+	bbf_cleanup(&dm_ctx);
+
+	return fault;
+}
+
+void update_valid_paths()
+{
+	pathnode *p=head;
+	int fault = 0;
+
+	while(p != NULL) {
+		fault = bbf_validate_path(p->ref_path);
+		if (fault == 0 ||
+		    fault == 9003 ||
+		    fault == 7004) {
+			insert(strdup(p->ref_path), false);
+		}
+		p = p->next;
+	}
+	deleteList();
 }
 
 void prepare_result(struct blob_buf *bb) {
@@ -1102,6 +1137,29 @@ static void fill_node_path() {
 		p=p->next;
 	}
 	deleteList();
+
+	// Check if the newly added nodes are instances or not
+	p = head;
+	if (p != NULL) {
+		char *ins = NULL;
+		size_t len;
+		char temp[NAME_MAX] = { };
+
+		len = strlen(p->ref_path);
+		strncpyt(temp, p->ref_path, len);
+		if (temp[len - 1] == '.')
+			temp[len - 1] = '\0';
+
+		ins = strrchr(temp, DELIM);
+
+		if (ins) {
+			size_t diff = labs(ins - temp);
+			if (is_node_instance(temp + diff + 1) == false) {
+				ERR("Invalid expression used to expand path");
+				deleteList();
+			}
+		}
+	}
 }
 
 static size_t expand_expression(char *path, char *exp) {

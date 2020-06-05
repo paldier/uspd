@@ -331,9 +331,9 @@ static void add_data_blob(struct blob_buf *bb, char *param, char *value, char *t
 	} else if (is_str_eq(type, DMT_TYPE[DMT_INT])) {
 		blobmsg_add_u32(bb, param, (uint32_t)atoi(value));
 	} else if (is_str_eq(type, DMT_TYPE[DMT_LONG])) {
-		blobmsg_add_u64(bb, param, (uint64_t)atol(value));
+		blobmsg_add_u64(bb, param, (uint64_t)atoll(value));
 	} else if (is_str_eq(type, DMT_TYPE[DMT_UNLONG])) {
-		blobmsg_add_u64(bb, param, (uint64_t)atol(value));
+		blobmsg_add_u64(bb, param, (uint64_t)atoll(value));
 	} else if (is_str_eq(type, DMT_TYPE[DMT_BOOL])) {
 		if (get_boolean_string(value))
 			blobmsg_add_u8(bb, param, true);

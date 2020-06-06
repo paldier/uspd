@@ -623,7 +623,8 @@ void process_result(struct blob_buf *bb, unsigned int len) {
 					len = strlen(temp);
 
 					char table_name[NAME_MAX]={'\0'};
-					strcpy(table_name, pn);
+					// Remove last dot in pn
+					strncpy(table_name, pn, strlen(pn) - 1);
 
 					if(is_node_instance(rnode->name + len)) {
 						//INFO("Open table |%s|", table_name);

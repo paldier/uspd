@@ -29,12 +29,13 @@ opr_ret_t create_operate_response(struct blob_buf *bb, char *cmd, struct blob_at
 {
 	char *input_params;
 	int fault = 0;
-	bool display_op = false;
+	void *array, *table;
 
 	pathnode *p=head;
 
 	DEBUG("entry");
 
+	array = blobmsg_open_array(bb, "parameters");
 	while(p!=NULL) {
 		struct dmctx dm_ctx = {0};
 		struct dm_parameter *n;
@@ -52,32 +53,50 @@ opr_ret_t create_operate_response(struct blob_buf *bb, char *cmd, struct blob_at
 
 		switch(fault) {
 			case CMD_NOT_FOUND:
-				blobmsg_add_u8(bb, "status", 0);
-				blobmsg_add_string(bb, "error", "method not supported");
+				{
+					table = blobmsg_open_table(bb, NULL);
+					blobmsg_add_u32(bb, "fault", 7026); //USP_ERR_INVALID_PATH
+					blobmsg_close_table(bb, table);
+				}
 				break;
 			case UBUS_INVALID_ARGUMENTS:
-				deleteList();
-				bbf_cleanup(&dm_ctx);
-				return(UBUS_INVALID_ARGUMENTS);
-			case SUCCESS:
-				list_for_each_entry(n, &dm_ctx.list_parameter, list) {
-					DEBUG("insert node|%s|, value|%s| ", n->name, n->data);
-					insert_result(n->name, n->data, n->type);
-					display_op = true;
+				{
+					table = blobmsg_open_table(bb, NULL);
+					blobmsg_add_u32(bb, "fault", 7004); //USP_ERR_INVALID_ARGUMENTS
+					blobmsg_close_table(bb, table);
 				}
-				if (!display_op)
-					blobmsg_add_u8(bb, "status", 1);
+				break;
+			case SUCCESS:
+				{
+					list_for_each_entry(n, &dm_ctx.list_parameter, list) {
+						table = blobmsg_open_table(bb, NULL);
+						DEBUG("insert node|%s|, value|%s| ", n->name, n->data);
+						blobmsg_add_string(bb, "parameter", n->name);
+						blobmsg_add_string(bb, "value", n->data);
+						blobmsg_add_string(bb, "type", n->type);
+						blobmsg_close_table(bb, table);
+					}
+				}
 				break;
 			case FAIL:
-				blobmsg_add_u8(bb, "status", 0);
+				{
+					table = blobmsg_open_table(bb, NULL);
+					blobmsg_add_u32(bb, "fault", 7022); //USP_ERR_COMMAND_FAILURE
+					blobmsg_close_table(bb, table);
+				}
 				break;
 			default:
-				ERR("Case not defined");
+				{
+					table = blobmsg_open_table(bb, NULL);
+					blobmsg_add_u32(bb, "fault", 7026); //USP_ERR_INVALID_PATH
+					blobmsg_close_table(bb, table);
+					ERR("Case not defined");
+				}
 		}
 		bbf_cleanup(&dm_ctx);
 		p=p->next;
 	}
+	blobmsg_close_array(bb, array);
 	deleteList();
-	prepare_result(bb);
 	return SUCCESS;
 }

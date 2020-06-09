@@ -58,6 +58,7 @@ enum {
 	DM_GET_PATH,
 	DM_GET_PROTO,
 	DM_GET_MAXDEPTH,
+	DM_GET_NXT_LVL,
 	__DM_GET_MAX
 };
 
@@ -86,6 +87,7 @@ static const struct blobmsg_policy dm_get_policy[__DM_GET_MAX] = {
 	[DM_GET_PATH] = { .name = "path", .type = BLOBMSG_TYPE_STRING },
 	[DM_GET_PROTO] = { .name = "proto", .type = BLOBMSG_TYPE_STRING },
 	[DM_GET_MAXDEPTH] = { .name = "maxdepth", .type = BLOBMSG_TYPE_INT32 },
+	[DM_GET_NXT_LVL] = { .name = "next-level", .type = BLOBMSG_TYPE_INT8 },
 };
 
 static const struct blobmsg_policy dm_get_safe_policy[__DM_GET_SAFE_MAX] = {
@@ -301,7 +303,6 @@ int usp_get_handler(struct ubus_context *ctx, struct ubus_object *obj,
 	if (tb[DM_GET_MAXDEPTH])
 		maxdepth = blobmsg_get_u32(tb[DM_GET_MAXDEPTH]);
 
-
 	blob_buf_init(&bb, 0);
 
 	if (is_str_eq(method, "get")) {
@@ -311,7 +312,14 @@ int usp_get_handler(struct ubus_context *ctx, struct ubus_object *obj,
 			create_response(&bb, path, maxdepth);
 		}
 	} else if (is_str_eq(method, "object_names")) {
-		create_name_response(&bb);
+		bool nxt_lvl;
+
+		if (tb[DM_GET_NXT_LVL])
+			nxt_lvl = blobmsg_get_u8(tb[DM_GET_NXT_LVL]);
+		else
+			nxt_lvl = false;
+
+		create_name_response(&bb, nxt_lvl);
 	} else if (is_str_eq(method, "instances")) {
 		create_inst_name_response(&bb);
 	} else if (is_str_eq(method, "resolve")) {

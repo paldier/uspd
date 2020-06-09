@@ -898,13 +898,15 @@ int bbf_get_inst_name_raw(char *path, struct blob_buf *bb) {
 	return fault;
 }
 
-int bbf_get_name_raw(char *path, struct blob_buf *bb) {
+int bbf_get_name_raw(char *path, struct blob_buf *bb, bool nxt_lvl) {
 	struct dmctx dm_ctx = {0};
 	struct dm_parameter *n;
+	char *nxt_lvl_str = nxt_lvl ? "1" : "0";
+
 	DEBUG("Entry path |%s|", path);
 
 	bbf_init(&dm_ctx, path);
-	int fault = bbf_get(CMD_GET_NAME, path, &dm_ctx, "false");
+	int fault = bbf_get(CMD_GET_NAME, path, &dm_ctx, nxt_lvl_str);
 	if(!fault) {
 		list_for_each_entry(n, &dm_ctx.list_parameter, list) {
 			size_t nlen = strlen(n->name);

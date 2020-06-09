@@ -86,11 +86,11 @@ void create_inst_name_response(struct blob_buf *bb) {
 	deleteList();
 }
 
-void create_name_response(struct blob_buf *bb) {
+void create_name_response(struct blob_buf *bb, bool nxt_lvl) {
 	pathnode *p=head;
 	void *array = blobmsg_open_array(bb, "parameters");
 	while(p!=NULL) {
-		if (bbf_get_name_raw(p->ref_path, bb))
+		if (bbf_get_name_raw(p->ref_path, bb, nxt_lvl))
 			break;
 		p = p->next;
 	}

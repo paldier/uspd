@@ -17,7 +17,7 @@
           "type": "integer",
           "required": "no",
           "default": "1",
-          "description": "Internal loglevel for debuging"
+          "description": "Internal loglevel for debugging {0: No Logs; 1: Errors only; 2: Errors and warnings; 3: Error, warning and info; 4: Everything}"
         }
       ]
     }

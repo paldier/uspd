@@ -75,6 +75,10 @@ void print_error(const char *format, ...)
 {
 	va_list arglist;
 
+	if (gLogLevel < 1) {
+		return;
+	}
+
 	va_start( arglist, format );
 	vsyslog(LOG_ERR, format, arglist);
 	va_end( arglist );
@@ -85,7 +89,7 @@ void print_error(const char *format, ...)
 void print_warning(const char *format, ...)
 {
 	va_list arglist;
-	if (gLogLevel < 1) {
+	if (gLogLevel < 2) {
 		return;
 	}
 
@@ -98,7 +102,7 @@ void print_info(const char *format, ...)
 {
 	va_list arglist;
 
-	if (gLogLevel < 2) {
+	if (gLogLevel < 3) {
 		return;
 	}
 
@@ -111,7 +115,7 @@ void print_debug(const char *format, ...)
 {
 	va_list arglist;
 
-	if (gLogLevel < 3) {
+	if (gLogLevel < 4) {
 		return;
 	}
 

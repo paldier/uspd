@@ -20,7 +20,18 @@ uspd requires a configuration file to provide more granular objects over ubus. G
 ````bash
 config uspd 'usp'
         option granularitylevel  '0'
+	option loglevel  '2'
 ````
+
+In the above uci, log_level can have below value:
+
+|log_level|  Meaning                                 |
+|---------| -----------------------------------------|
+|  0      | Uspd will not log anything               |
+|  1      | Only errors will be loged                |
+|  2      | Only errors and warnings will be loged   |
+|  3      | Log everything except debug              |
+|  4      | Everything will be loged                 |
 
 For more info on the UCI uspd configuration see [link](./docs/api/uci.uspd.md)
 

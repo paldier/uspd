@@ -909,10 +909,8 @@ int bbf_get_name_raw(char *path, struct blob_buf *bb, bool nxt_lvl) {
 	int fault = bbf_get(CMD_GET_NAME, path, &dm_ctx, nxt_lvl_str);
 	if(!fault) {
 		list_for_each_entry(n, &dm_ctx.list_parameter, list) {
-			size_t nlen = strlen(n->name);
-			if(n->name[nlen-1]=='.')
-				continue;
 			void *table = blobmsg_open_table(bb, NULL);
+
 			blobmsg_add_string(bb, "parameter", n->name);
 			blobmsg_close_table(bb, table);
 		}

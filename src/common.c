@@ -481,6 +481,9 @@ static int bbf_get(int operation, char *path, struct dmctx *dm_ctx, char *next) 
 		case CMD_GET_VALUE:
 			fault = dm_entry_param_method(dm_ctx, CMD_GET_VALUE, path, NULL, NULL);
 			break;
+		case CMD_GET_NOTIFICATION:
+			fault = dm_entry_param_method(dm_ctx, CMD_GET_NOTIFICATION, path, next, NULL);
+			break;
 		default:
 			ERR("Operation not supported yet!");
 			return false;
@@ -799,6 +802,36 @@ int bbf_get_value(char *path, bool fill, char *query_path, struct blob_buf *bb, 
 	return fault;
 }
 
+int bbf_get_notif_blob(char *path, struct blob_buf *bb)
+{
+	struct dmctx dm_ctx = {0};
+	struct dm_parameter *n;
+	size_t plen = strlen(path);
+
+	bbf_init(&dm_ctx, path);
+	int fault = bbf_get(CMD_GET_NOTIFICATION, path, &dm_ctx, NULL);
+	if(!fault) {
+		void *t = NULL;
+		size_t poff = 0;
+
+		if (path[plen - 1] == '.') {
+			t = blobmsg_open_table(bb, path);
+			poff = plen;
+		}
+
+		list_for_each_entry(n, &dm_ctx.list_parameter, list)
+			blobmsg_add_string(bb, n->name + poff,  n->data);
+
+		if (t)
+			blobmsg_close_table(bb, t);
+	} else {
+		blobmsg_add_string(bb, "path", path);
+		blobmsg_add_u32(bb, "fault", (uint32_t)fault);
+	}
+	bbf_cleanup(&dm_ctx);
+	return fault;
+}
+
 int bbf_get_value_blob(char *path, struct blob_buf *bb)
 {
 	struct dmctx dm_ctx = {0};
@@ -828,6 +861,32 @@ int bbf_get_value_blob(char *path, struct blob_buf *bb)
 	bbf_cleanup(&dm_ctx);
 	return fault;
 }
+
+int bbf_get_notif_raw(char *path, struct blob_buf *bb) {
+	struct dmctx dm_ctx = {0};
+	struct dm_parameter *n;
+	DEBUG("Entry path |%s|", path);
+
+	bbf_init(&dm_ctx, path);
+	int fault = bbf_get(CMD_GET_NOTIFICATION, path, &dm_ctx, NULL);
+	if(!fault) {
+		list_for_each_entry(n, &dm_ctx.list_parameter, list) {
+			void *table = blobmsg_open_table(bb, NULL);
+			blobmsg_add_string(bb, "parameter", n->name);
+			blobmsg_add_string(bb, "value", n->data);
+			blobmsg_close_table(bb, table);
+			DEBUG("param|%s|, value|%s|", n->name, n->data);
+		}
+	} else {
+		void *table = blobmsg_open_table(bb, NULL);
+		blobmsg_add_string(bb, "path", path);
+		blobmsg_add_u32(bb, "fault", (uint32_t)fault);
+		blobmsg_close_table(bb, table);
+	}
+	bbf_cleanup(&dm_ctx);
+	return fault;
+}
+
 
 int bbf_get_value_raw(char *path, struct blob_buf *bb) {
 	struct dmctx dm_ctx = {0};

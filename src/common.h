@@ -33,7 +33,9 @@ int bbf_get_value(char *path, bool fill, char *query_path,
 		  struct blob_buf *bb, uint8_t maxdepth);
 bool bbf_get_name(char *path);
 int bbf_get_value_raw(char *path, struct blob_buf *bb);
+int bbf_get_notif_raw(char *path, struct blob_buf *bb);
 int bbf_get_value_blob(char *path, struct blob_buf *bb);
+int bbf_get_notif_blob(char *path, struct blob_buf *bb);
 int bbf_get_inst_name_raw(char *path, struct blob_buf *bb);
 int bbf_get_name_raw(char *path, struct blob_buf *bb, bool nxt_lvl);
 bool get_granular_obj_list(char *path);

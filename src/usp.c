@@ -153,11 +153,11 @@ static void set_bbf_data_type(struct blob_attr *proto)
 	set_bbfdatamodel_type(type);
 }
 
-static int usp_get_attributes(struct ubus_context *ctx,
-			__unused struct ubus_object *obj,
+static int get_safe(struct ubus_context *ctx,
+			struct ubus_object *obj,
 			struct ubus_request_data *req,
-			__unused const char *method,
-			struct blob_attr *msg)
+			struct blob_attr *msg,
+			int bbf_cmd)
 {
 	struct blob_buf bb = {};
 	struct blob_attr *tb[__DM_GET_SAFE_MAX];
@@ -185,9 +185,9 @@ static int usp_get_attributes(struct ubus_context *ctx,
 		char *path_str = blobmsg_get_string(path);
 
 		if (raw)
-			bbf_get_notif_raw(path_str, &bb);
+			bbf_get_raw(bbf_cmd, path_str, &bb);
 		else
-			bbf_get_notif_blob(path_str, &bb);
+			bbf_get_blob(bbf_cmd, path_str, &bb);
 	}
 
 	if (raw)
@@ -198,49 +198,22 @@ static int usp_get_attributes(struct ubus_context *ctx,
 	return 0;
 }
 
+static int usp_get_attributes(struct ubus_context *ctx,
+			struct ubus_object *obj,
+			struct ubus_request_data *req,
+			__unused const char *method,
+			struct blob_attr *msg)
+{
+	return get_safe(ctx, obj, req, msg, CMD_GET_NOTIFICATION);
+}
+
 static int usp_get_safe(struct ubus_context *ctx,
 			__unused struct ubus_object *obj,
 			struct ubus_request_data *req,
 			__unused const char *method,
 			struct blob_attr *msg)
 {
-	struct blob_buf bb = {};
-	struct blob_attr *tb[__DM_GET_SAFE_MAX];
-	struct blob_attr *paths;
-	struct blob_attr *path;
-	void *a;
-	size_t rem;
-	const int raw = is_str_eq(obj->name, RAWUSP);
-
-	blobmsg_parse(dm_get_safe_policy, __DM_GET_SAFE_MAX,
-			tb, blob_data(msg), blob_len(msg));
-
-	paths = tb[DM_GET_SAFE_PATHS];
-	if (paths == NULL)
-		return UBUS_STATUS_INVALID_ARGUMENT;
-
-	set_bbf_data_type(tb[DM_GET_SAFE_PROTO]);
-
-	blob_buf_init(&bb, 0);
-
-	if (raw)
-		a = blobmsg_open_array(&bb, "parameters");
-
-	blobmsg_for_each_attr(path, paths, rem) {
-		char *path_str = blobmsg_get_string(path);
-
-		if (raw)
-			bbf_get_value_raw(path_str, &bb);
-		else
-			bbf_get_value_blob(path_str, &bb);
-	}
-
-	if (raw)
-		blobmsg_close_array(&bb, a);
-
-	ubus_send_reply(ctx, req, bb.head);
-	blob_buf_free(&bb);
-	return 0;
+	return get_safe(ctx, obj, req, msg, CMD_GET_VALUE);
 }
 
 int usp_add_del_handler(struct ubus_context *ctx, struct ubus_object *obj,

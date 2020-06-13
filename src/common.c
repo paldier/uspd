@@ -1039,7 +1039,7 @@ static bool bbf_get_name_exp(char *path, char *operator, char *operand) {
 	return(ret);
 }
 
-int bbf_set_value(struct blob_buf *bb, char *path, char *value) {
+int bbf_set_value(struct blob_buf *bb, char *path, char *value, char *key) {
 	int fault = 0;
 	struct dmctx dm_ctx = {0};
 	struct dmctx *p_dmctx = &dm_ctx;
@@ -1050,7 +1050,7 @@ int bbf_set_value(struct blob_buf *bb, char *path, char *value) {
 	fault = dm_entry_param_method(&dm_ctx, CMD_SET_VALUE, path, value, NULL);
 
 	if(!fault) {
-		fault = dm_entry_apply(&dm_ctx, CMD_SET_VALUE, "", NULL);
+		fault = dm_entry_apply(&dm_ctx, CMD_SET_VALUE, key, NULL);
 	}
 
 	if (p_dmctx->list_fault_param.next != &p_dmctx->list_fault_param) {

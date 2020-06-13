@@ -28,7 +28,7 @@ typedef struct pathnode {
 void bbf_init(struct dmctx *dm_ctx, char *path);
 void bbf_cleanup(struct dmctx *dm_ctx);
 char *bbf_get_value_by_id(char *id);
-int bbf_set_value(struct blob_buf *bb, char *path, char *value);
+int bbf_set_value(struct blob_buf *bb, char *path, char *value, char *key);
 int bbf_get_value(char *path, bool fill, char *query_path,
 		  struct blob_buf *bb, uint8_t maxdepth);
 bool bbf_get_name(char *path);

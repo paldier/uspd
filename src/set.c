@@ -25,17 +25,17 @@
 
 extern pathnode *head;
 
-void create_set_response(struct blob_buf *bb, char *value) {
+void create_set_response(struct blob_buf *bb, char *value, char *key) {
 	pathnode *p=head;
 	while(p!=NULL) {
-		if (bbf_set_value(bb, p->ref_path, value))
+		if (bbf_set_value(bb, p->ref_path, value, key))
 			break;
 		p=p->next;
 	}
 	deleteList();
 }
 
-void set_multiple_values(struct blob_buf *bb, struct blob_attr *blob_value) {
+void set_multiple_values(struct blob_buf *bb, struct blob_attr *blob_value, char *key) {
 
 	size_t tlen = (size_t)blobmsg_data_len(blob_value);
 	struct blob_attr *attr;
@@ -70,7 +70,7 @@ void set_multiple_values(struct blob_buf *bb, struct blob_attr *blob_value) {
 					break;
 			}
 
-			if (bbf_set_value(bb, path, value))
+			if (bbf_set_value(bb, path, value, key))
 				break;
 			p=p->next;
 		}

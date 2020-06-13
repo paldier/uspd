@@ -80,6 +80,7 @@ enum {
 	DM_SET_VALUE,
 	DM_SET_VALUE_TABLE,
 	DM_SET_PROTO,
+	DM_SET_PARAMETER_KEY,
 	__DM_SET_MAX,
 };
 
@@ -105,7 +106,8 @@ static const struct blobmsg_policy dm_set_policy[__DM_SET_MAX] = {
 	[DM_SET_PATH] = { .name = "path", .type = BLOBMSG_TYPE_STRING },
 	[DM_SET_VALUE] = { .name = "value", .type = BLOBMSG_TYPE_STRING },
 	[DM_SET_VALUE_TABLE] = { .name = "values", .type = BLOBMSG_TYPE_TABLE },
-	[DM_SET_PROTO] = { .name = "proto", .type = BLOBMSG_TYPE_STRING }
+	[DM_SET_PROTO] = { .name = "proto", .type = BLOBMSG_TYPE_STRING },
+	[DM_SET_PARAMETER_KEY] = { .name = "key", .type = BLOBMSG_TYPE_STRING }
 };
 
 static bool is_sanitized(char *param)
@@ -357,10 +359,12 @@ int usp_set(struct ubus_context *ctx, struct ubus_object *obj,
 		struct blob_attr *msg)
 {
 	INFO("Entry method|%s| ubus name|%s|", method, obj->name);
+	struct blob_buf bb = {};
 	struct blob_attr *tb[__DM_SET_MAX] = {NULL};
 	char path[PATH_MAX]={'\0'}, value[NAME_MAX]={'\0'};
 	char *blob_msg = NULL;
 	void *array = NULL;
+	char *key = "";
 
 	if(blobmsg_parse(dm_set_policy, __DM_SET_MAX, tb, blob_data(msg), blob_len(msg))) {
 		ERR("Failed to parse blob");
@@ -373,10 +377,10 @@ int usp_set(struct ubus_context *ctx, struct ubus_object *obj,
 	if (!tb[DM_SET_VALUE] && !tb[DM_SET_VALUE_TABLE])
 		return UBUS_STATUS_INVALID_ARGUMENT;
 
-	set_bbf_data_type(tb[DM_SET_PROTO]);
+	if (tb[DM_SET_PARAMETER_KEY])
+		key = blobmsg_get_string(tb[DM_SET_PARAMETER_KEY]);
 
-	struct blob_buf bb;
-	memset(&bb,0,sizeof(struct blob_buf));
+	set_bbf_data_type(tb[DM_SET_PROTO]);
 
 	blob_buf_init(&bb, 0);
 
@@ -402,10 +406,10 @@ int usp_set(struct ubus_context *ctx, struct ubus_object *obj,
 	if (tb[DM_SET_VALUE]) {
 		blob_msg = blobmsg_data(tb[DM_SET_VALUE]);
 		strncpyt(value, blob_msg, sizeof(value));
-		create_set_response(&bb, value);
+		create_set_response(&bb, value, key);
 	}
 	if(tb[DM_SET_VALUE_TABLE]) {
-		set_multiple_values(&bb, tb[DM_SET_VALUE_TABLE]);
+		set_multiple_values(&bb, tb[DM_SET_VALUE_TABLE], key);
 	}
 
 	blobmsg_close_array(&bb, array);

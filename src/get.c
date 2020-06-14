@@ -42,7 +42,7 @@ void create_raw_response(struct blob_buf *bb) {
 	pathnode *p=head;
 	void *array = blobmsg_open_array(bb, "parameters");
 	while(p!=NULL) {
-		if (bbf_get_raw(CMD_GET_VALUE, p->ref_path, bb))
+		if (bbf_get_raw(CMD_GET_VALUE, p->ref_path, bb, NULL))
 			break;
 		p = p->next;
 	}

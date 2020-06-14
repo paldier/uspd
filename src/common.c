@@ -789,7 +789,7 @@ int bbf_get_value(char *path, bool fill, char *query_path, struct blob_buf *bb, 
 	return fault;
 }
 
-int bbf_get_blob(int cmd, char *path, struct blob_buf *bb)
+int bbf_get_blob(int cmd, char *path, struct blob_buf *bb, char *nxt_lvl)
 {
 	struct dmctx dm_ctx = {0};
 	struct dm_parameter *n;
@@ -799,7 +799,7 @@ int bbf_get_blob(int cmd, char *path, struct blob_buf *bb)
 	DEBUG("Entry path |%s|", path);
 
 	bbf_init(&dm_ctx, path);
-	fault = bbf_get(cmd, path, &dm_ctx, NULL);
+	fault = bbf_get(cmd, path, &dm_ctx, nxt_lvl);
 	if(!fault) {
 		void *t = NULL;
 		size_t poff = 0;
@@ -822,23 +822,25 @@ int bbf_get_blob(int cmd, char *path, struct blob_buf *bb)
 	return fault;
 }
 
-int bbf_get_raw(int cmd, char *path, struct blob_buf *bb)
+int bbf_get_raw(int cmd, char *path, struct blob_buf *bb, char *nxt_lvl)
 {
 	struct dmctx dm_ctx = {0};
 	struct dm_parameter *n;
-	int fault;
 	void *table;
+	int fault;
 
 	DEBUG("Entry path |%s|", path);
 
 	bbf_init(&dm_ctx, path);
-	fault = bbf_get(cmd, path, &dm_ctx, NULL);
+	fault = bbf_get(cmd, path, &dm_ctx, nxt_lvl);
 	if(!fault) {
 		list_for_each_entry(n, &dm_ctx.list_parameter, list) {
 			table = blobmsg_open_table(bb, NULL);
 
 			blobmsg_add_string(bb, "parameter", n->name);
-			blobmsg_add_string(bb, "value", n->data);
+
+			if (n->data && cmd != CMD_GET_NAME)
+				blobmsg_add_string(bb, "value", n->data);
 
 			if (n->type)
 				blobmsg_add_string(bb, "type", n->type);

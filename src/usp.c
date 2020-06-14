@@ -65,6 +65,7 @@ enum {
 enum {
 	DM_GET_SAFE_PATHS,
 	DM_GET_SAFE_PROTO,
+	DM_GET_SAFE_NXT_LVL,
 	__DM_GET_SAFE_MAX
 };
 
@@ -93,7 +94,8 @@ static const struct blobmsg_policy dm_get_policy[__DM_GET_MAX] = {
 
 static const struct blobmsg_policy dm_get_safe_policy[__DM_GET_SAFE_MAX] = {
 	[DM_GET_SAFE_PATHS] = { .name = "paths", .type = BLOBMSG_TYPE_ARRAY },
-	[DM_GET_SAFE_PROTO] = { .name = "proto", .type = BLOBMSG_TYPE_STRING }
+	[DM_GET_SAFE_PROTO] = { .name = "proto", .type = BLOBMSG_TYPE_STRING },
+	[DM_GET_SAFE_NXT_LVL] = { .name = "next-level", .type = BLOBMSG_TYPE_INT8 },
 };
 
 static const struct blobmsg_policy dm_add_policy[__DM_ADD_MAX] = {
@@ -166,6 +168,7 @@ static int get_safe(struct ubus_context *ctx,
 	struct blob_attr *paths;
 	struct blob_attr *path;
 	void *a;
+	char *nxt_lvl;
 	size_t rem;
 	const int raw = is_str_eq(obj->name, RAWUSP);
 
@@ -175,6 +178,15 @@ static int get_safe(struct ubus_context *ctx,
 	paths = tb[DM_GET_SAFE_PATHS];
 	if (paths == NULL)
 		return UBUS_STATUS_INVALID_ARGUMENT;
+
+	if (tb[DM_GET_SAFE_NXT_LVL]) {
+		if (blobmsg_get_u8(tb[DM_GET_SAFE_NXT_LVL]))
+			nxt_lvl = "1";
+		else
+			nxt_lvl = "0";
+	} else {
+		nxt_lvl = NULL;
+	}
 
 	set_bbf_data_type(tb[DM_GET_SAFE_PROTO]);
 
@@ -187,9 +199,9 @@ static int get_safe(struct ubus_context *ctx,
 		char *path_str = blobmsg_get_string(path);
 
 		if (raw)
-			bbf_get_raw(bbf_cmd, path_str, &bb);
+			bbf_get_raw(bbf_cmd, path_str, &bb, nxt_lvl);
 		else
-			bbf_get_blob(bbf_cmd, path_str, &bb);
+			bbf_get_blob(bbf_cmd, path_str, &bb, nxt_lvl);
 	}
 
 	if (raw)
@@ -209,14 +221,24 @@ static int usp_get_attributes(struct ubus_context *ctx,
 	return get_safe(ctx, obj, req, msg, CMD_GET_NOTIFICATION);
 }
 
-static int usp_get_safe(struct ubus_context *ctx,
-			__unused struct ubus_object *obj,
+static int usp_get_safe_values(struct ubus_context *ctx,
+			struct ubus_object *obj,
 			struct ubus_request_data *req,
 			__unused const char *method,
 			struct blob_attr *msg)
 {
 	return get_safe(ctx, obj, req, msg, CMD_GET_VALUE);
 }
+
+static int usp_get_safe_names(struct ubus_context *ctx,
+			struct ubus_object *obj,
+			struct ubus_request_data *req,
+			__unused const char *method,
+			struct blob_attr *msg)
+{
+	return get_safe(ctx, obj, req, msg, CMD_GET_NAME);
+}
+
 
 int usp_add_del_handler(struct ubus_context *ctx, struct ubus_object *obj,
 		struct ubus_request_data *req, const char *method,
@@ -482,8 +504,9 @@ int usp_operate(struct ubus_context *ctx, struct ubus_object *obj,
 
 static struct ubus_method usp_methods[] = {
 	UBUS_METHOD("get", usp_get_handler, dm_get_policy),
-	UBUS_METHOD("get_attributes", usp_get_attributes, dm_get_safe_policy),
-	UBUS_METHOD("get_safe", usp_get_safe, dm_get_safe_policy),
+	UBUS_METHOD("get_safe_attributes", usp_get_attributes, dm_get_safe_policy),
+	UBUS_METHOD("get_safe_values", usp_get_safe_values, dm_get_safe_policy),
+	UBUS_METHOD("get_safe_names", usp_get_safe_names, dm_get_safe_policy),
 	UBUS_METHOD("set", usp_set, dm_set_policy),
 	UBUS_METHOD("operate", usp_operate, dm_operate_policy),
 	UBUS_METHOD("add_object", usp_add_del_handler, dm_add_policy),

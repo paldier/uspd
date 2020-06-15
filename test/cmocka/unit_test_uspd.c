@@ -219,6 +219,7 @@ static void test_api_usp_object_name_Device_Users_User(void **state)
 
         blobmsg_add_string(bb, "path", "Device.Users.User.");
         blobmsg_add_string(bb, "proto", GET_PROTO);
+        blobmsg_add_u8(bb, "next-level", true);
 
         usp_get_handler(NULL, obj, NULL, "object_names", bb->head);
 	jobj = json_object_from_file("/tmp/test.log");
@@ -228,7 +229,7 @@ static void test_api_usp_object_name_Device_Users_User(void **state)
         array_index_obj = json_object_array_get_idx(array_obj, 0);
 
         tmp = json_object_object_get(array_index_obj, "parameter");
-        assert_string_equal(json_object_get_string(tmp), "Device.Users.User.1.Alias");
+        assert_string_equal(json_object_get_string(tmp), "Device.Users.User.1.");
 
         json_object_put(jobj);
         return;
@@ -395,6 +396,7 @@ static void test_api_usp_raw_object_name_Device_Users_User(void **state)
 
         blobmsg_add_string(bb, "path", "Device.Users.User.");
         blobmsg_add_string(bb, "proto", GET_PROTO);
+        blobmsg_add_u8(bb, "next-level", true);
 
         usp_get_handler(NULL, obj, NULL, "object_names", bb->head);
         jobj = json_object_from_file("/tmp/test.log");
@@ -404,7 +406,7 @@ static void test_api_usp_raw_object_name_Device_Users_User(void **state)
         array_index_obj = json_object_array_get_idx(array_obj, 0);
 
         tmp = json_object_object_get(array_index_obj, "parameter");
-        assert_string_equal(json_object_get_string(tmp), "Device.Users.User.1.Alias");
+        assert_string_equal(json_object_get_string(tmp), "Device.Users.User.1.");
 
         json_object_put(jobj);
         return;

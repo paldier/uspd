@@ -251,7 +251,6 @@ int usp_add_del_handler(struct ubus_context *ctx, struct ubus_object *obj,
 	size_t path_len;
 	char *blob_msg = NULL;
 
-	INFO("Entry method|%s| ubus name|%s|", method, obj->name);
 
 	if(blobmsg_parse(dm_add_policy, __DM_ADD_MAX, tb, blob_data(msg), blob_len(msg))) {
 		ERR("Failed to parse blob");
@@ -289,6 +288,8 @@ int usp_add_del_handler(struct ubus_context *ctx, struct ubus_object *obj,
 
 	blob_buf_init(&bb, 0);
 
+	INFO("ubus method|%s| name|%s|, path(%s)", method, obj->name, path);
+
 	if (is_str_eq(method, "add_object")) {
 		add_object(&bb, path, pkey);
 	} else if (is_str_eq(method, "del_object")) {
@@ -313,7 +314,6 @@ int usp_get_handler(struct ubus_context *ctx, struct ubus_object *obj,
 	char *blob_msg = NULL;
 	uint8_t maxdepth = 0;
 
-	INFO("Entry method|%s| ubus name|%s|", method, obj->name);
 
 	if(blobmsg_parse(dm_get_policy, __DM_GET_MAX, tb, blob_data(msg), blob_len(msg))) {
 		ERR("Failed to parse blob");
@@ -338,6 +338,8 @@ int usp_get_handler(struct ubus_context *ctx, struct ubus_object *obj,
 		ERR("Invalid path |%s|", path);
 		return UBUS_STATUS_INVALID_ARGUMENT;
 	}
+
+	INFO("ubus method|%s|, name|%s|, path(%s)", method, obj->name, path);
 
 	filter_results(path, 0, strlen(path));
 	update_valid_paths();
@@ -380,7 +382,6 @@ int usp_set(struct ubus_context *ctx, struct ubus_object *obj,
 		struct ubus_request_data *req, const char *method,
 		struct blob_attr *msg)
 {
-	INFO("Entry method|%s| ubus name|%s|", method, obj->name);
 	struct blob_buf bb = {};
 	struct blob_attr *tb[__DM_SET_MAX] = {NULL};
 	char path[PATH_MAX]={'\0'}, value[NAME_MAX]={'\0'};
@@ -420,6 +421,7 @@ int usp_set(struct ubus_context *ctx, struct ubus_object *obj,
 		return UBUS_STATUS_INVALID_ARGUMENT;
 	}
 
+	INFO("ubus method|%s|, name|%s|, path(%s)", method, obj->name, path);
 	filter_results(path, 0, strlen(path));
 	update_valid_paths();
 
@@ -458,7 +460,6 @@ int usp_operate(struct ubus_context *ctx, struct ubus_object *obj,
 	struct blob_buf bb;
 	char path[PATH_MAX]={'\0'};
 	char cmd[NAME_MAX]={'\0'};
-	INFO("Entry method|%s| ubus name|%s|", method, obj->name);
 	char *blob_msg = NULL;
 
 	if(blobmsg_parse(dm_operate_policy, __DM_OPERATE_MAX, tb, blob_data(msg), blob_len(msg))) {
@@ -487,6 +488,7 @@ int usp_operate(struct ubus_context *ctx, struct ubus_object *obj,
 	}
 	blob_msg = blobmsg_data(tb[DM_OPERATE_ACTION]);
 	strncpyt(cmd, blob_msg, sizeof(cmd));
+	INFO("ubus method|%s|, name|%s|, path(%s)", method, obj->name, path);
 
 	filter_results(path, 0, strlen(path));
 	update_valid_paths();

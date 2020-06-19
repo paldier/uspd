@@ -915,6 +915,10 @@ int bbf_get_name_raw(char *path, struct blob_buf *bb, bool nxt_lvl) {
 			void *table = blobmsg_open_table(bb, NULL);
 
 			blobmsg_add_string(bb, "parameter", n->name);
+			if (n->data)
+				blobmsg_add_string(bb, "writable", n->data);
+			if (n->type)
+				blobmsg_add_string(bb, "type", n->type);
 			blobmsg_close_table(bb, table);
 		}
 	} else {

@@ -839,7 +839,7 @@ int bbf_get_raw(int cmd, char *path, struct blob_buf *bb, char *nxt_lvl)
 
 			blobmsg_add_string(bb, "parameter", n->name);
 
-			if (n->data && cmd != CMD_GET_NAME)
+			if (n->data)
 				blobmsg_add_string(bb, "value", n->data);
 
 			if (n->type)

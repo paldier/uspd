@@ -190,6 +190,7 @@ static int get_safe(struct ubus_context *ctx,
 
 	set_bbf_data_type(tb[DM_GET_SAFE_PROTO]);
 
+	memset(&bb, 0, sizeof(struct blob_buf));
 	blob_buf_init(&bb, 0);
 
 	if (raw)
@@ -286,6 +287,7 @@ int usp_add_del_handler(struct ubus_context *ctx, struct ubus_object *obj,
 	if (tb[DM_ADD_PARAMETER_KEY])
 		pkey = blobmsg_get_string(tb[DM_ADD_PARAMETER_KEY]);
 
+	memset(&bb, 0, sizeof(struct blob_buf));
 	blob_buf_init(&bb, 0);
 
 	INFO("ubus method|%s| name|%s|, path(%s)", method, obj->name, path);
@@ -347,6 +349,7 @@ int usp_get_handler(struct ubus_context *ctx, struct ubus_object *obj,
 	if (tb[DM_GET_MAXDEPTH])
 		maxdepth = blobmsg_get_u32(tb[DM_GET_MAXDEPTH]);
 
+	memset(&bb, 0, sizeof(struct blob_buf));
 	blob_buf_init(&bb, 0);
 
 	if (is_str_eq(method, "get")) {
@@ -405,6 +408,7 @@ int usp_set(struct ubus_context *ctx, struct ubus_object *obj,
 
 	set_bbf_data_type(tb[DM_SET_PROTO]);
 
+	memset(&bb, 0, sizeof(struct blob_buf));
 	blob_buf_init(&bb, 0);
 
 	// In case of granular objects, Concatenate relative path to ubus object
